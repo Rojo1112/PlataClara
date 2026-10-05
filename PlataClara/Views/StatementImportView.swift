@@ -79,8 +79,9 @@ struct StatementImportView: View {
             if !entries.isEmpty {
                 Section {
                     LabeledContent("Entradas seleccionadas", value: Money.format(total(of: .ingreso)))
-                    LabeledContent("Salidas seleccionadas", value: Money.format(total(of: .gasto)))
-                    LabeledContent("Pagos a tarjeta", value: Money.format(total(of: .transferencia)))
+                    LabeledContent("Salidas seleccionadas", value: Money.format(total(of: .gasto) + total(of: .transferencia)))
+                    LabeledContent("   · gastos", value: Money.format(total(of: .gasto)))
+                    LabeledContent("   · pagos a tarjeta (no son gasto)", value: Money.format(total(of: .transferencia)))
                 } header: {
                     Text("Compáralo con el resumen del extracto")
                 } footer: {
