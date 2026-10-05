@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import SwiftData
 import PDFKit
+import PhotosUI
 import UniformTypeIdentifiers
 import PlataCore
 
@@ -23,6 +24,8 @@ struct StatementImportView: View {
     @State private var readingImage = false
     @State private var usedOCR = false
     @State private var message: String?
+    @State private var photos: [PhotosPickerItem] = []
+    @State private var fromScreenshots = false
 
     var body: some View {
         List {
@@ -38,6 +41,15 @@ struct StatementImportView: View {
                     }
             } footer: {
                 Text("Sirve con PDF del banco (con o sin contraseña), CSV o TXT. Si el PDF tiene la copia de texto bloqueada o es una imagen, la app lee la imagen de cada página en tu iPhone. Nada sale del teléfono.")
+            }
+
+            Section {
+                PhotosPicker(selection: $photos, maxSelectionCount: 10, matching: .images) {
+                    Label("Leer capturas de pantalla…", systemImage: "photo.on.rectangle")
+                }
+                .disabled(accountID == nil || readingImage)
+            } footer: {
+                Text("Elige capturas de la lista de movimientos de la app del banco (hasta 10). Se leen en tu iPhone. Lo tachado o con reloj en la app del banco no se distingue: desmarca esos antes de importar.")
             }
 
             if needsPassword {
@@ -114,7 +126,8 @@ struct StatementImportView: View {
             }
         }
         .navigationTitle("Importar extracto")
-        .onChange(of: accountID) { _, _ in if !rawText.isEmpty { process(text: rawText, announceEmpty: true) } }
+        .onChange(of: accountID) { _, _ in if !rawText.isEmpty { process(text: rawText, announceEmpty: true, screenshots: fromScreenshots) } }
+        .onChange(of: photos) { _, items in readScreenshots(items) }
         .alert("Extracto", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -207,12 +220,38 @@ struct StatementImportView: View {
         }
     }
 
-    private func process(text: String, announceEmpty: Bool) {
+    /// Lee las capturas elegidas con OCR y arma la lista de movimientos.
+    private func readScreenshots(_ items: [PhotosPickerItem]) {
+        guard !items.isEmpty, !readingImage else { return }
+        readingImage = true
+        Task {
+            var texts: [String] = []
+            for item in items {
+                if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+                    texts.append(await StatementTextExtractor.ocrText(of: image))
+                }
+            }
+            photos = []
+            readingImage = false
+            document = nil
+            needsPassword = false
+            usedOCR = true
+            process(text: texts.joined(separator: "\n"), announceEmpty: true, screenshots: true)
+        }
+    }
+
+    private func process(text: String, announceEmpty: Bool, screenshots: Bool = false) {
         rawText = text
+        fromScreenshots = screenshots
         let calendar = Calendar.gregoriano
         let year = calendar.component(.year, from: .now)
-        entries = StatementParser.parse(text: text, calendar: calendar, defaultYear: year)
-        declared = StatementParser.declaredTotals(in: text)
+        if screenshots {
+            entries = ScreenshotParser.parse(text: text, now: .now, calendar: calendar)
+            declared = StatementTotals(income: nil, outflow: nil)
+        } else {
+            entries = StatementParser.parse(text: text, calendar: calendar, defaultYear: year)
+            declared = StatementParser.declaredTotals(in: text)
+        }
         let snapshots = movements.map { $0.snapshot(categoryName: nil) }
         duplicates = Set(entries.indices.filter {
             StatementReconciler.isDuplicate(entries[$0], accountID: accountID, existing: snapshots, calendar: calendar)

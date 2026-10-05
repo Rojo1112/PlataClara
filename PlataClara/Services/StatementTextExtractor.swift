@@ -19,6 +19,12 @@ enum StatementTextExtractor {
         return pages.joined(separator: "\n")
     }
 
+    /// Lee el texto de una captura de pantalla o foto.
+    static func ocrText(of image: UIImage) async -> String {
+        guard let cgImage = image.cgImage else { return "" }
+        return await recognize(cgImage)
+    }
+
     private static func render(_ page: PDFPage) -> CGImage? {
         let bounds = page.bounds(for: .mediaBox)
         guard bounds.width > 0, bounds.height > 0 else { return nil }
