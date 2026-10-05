@@ -138,12 +138,14 @@ final class StatementTests: XCTestCase {
     }
 
     func testDeclaredTotalsAndCheck() {
-        let totals = StatementParser.declaredTotals(in: "Resumen
-Lo que entró a tu cuenta
-+$250.000,00
-Lo que salió de tu cuenta
--$400.000,50
-")
+        let summary = """
+        Resumen
+        Lo que entró a tu cuenta
+        +$250.000,00
+        Lo que salió de tu cuenta
+        -$400.000,50
+        """
+        let totals = StatementParser.declaredTotals(in: summary)
         XCTAssertEqual(totals, StatementTotals(income: 250_000, outflow: 400_000))
         XCTAssertEqual(StatementParser.declaredTotals(in: "nada"), StatementTotals(income: nil, outflow: nil))
 
