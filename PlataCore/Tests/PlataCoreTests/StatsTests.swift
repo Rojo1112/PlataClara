@@ -52,3 +52,25 @@ final class StatsTests: XCTestCase {
         XCTAssertEqual(Stats.averageDailyExpense(expenses: 310_000, interval: octubre, today: fecha(2026, 11, 5), calendar: bogota), 10_000)
     }
 }
+
+final class RefundStatsTests: XCTestCase {
+    func testReembolsoRestaDelGastoYNoEsIngreso() {
+        let cal = Calendar(identifier: .gregorian)
+        let day = cal.date(from: DateComponents(year: 2026, month: 9, day: 5))!
+        let interval = Stats.monthInterval(containing: day, calendar: cal)
+        let ms = [
+            MovementSnapshot(amount: 10_000, date: day, kind: .gasto, method: .debito, accountID: nil),
+            MovementSnapshot(amount: 4_000, date: day, kind: .ingreso, method: .transferencia, accountID: nil, isRefund: true),
+            MovementSnapshot(amount: 50_000, date: day, kind: .ingreso, method: .transferencia, accountID: nil),
+        ]
+        let s = Stats.summary(movements: ms, in: interval, pendingFixed: 0)
+        XCTAssertEqual(s.income, 50_000)
+        XCTAssertEqual(s.expenses, 6_000)
+    }
+
+    func testDetectaReembolsos() {
+        XCTAssertTrue(MovementClassifier.isRefund("Hicimos un reembolso"))
+        XCTAssertTrue(MovementClassifier.isRefund("Reversión compra"))
+        XCTAssertFalse(MovementClassifier.isRefund("Compra en UBER*RIDES"))
+    }
+}
