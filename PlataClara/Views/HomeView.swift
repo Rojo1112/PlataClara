@@ -26,7 +26,7 @@ struct HomeView: View {
                     metric("Deuda en tarjetas", Ledger.totalDebt(accounts: accountSnapshots, movements: snapshots), .red)
                 }
                 Section("Este mes") {
-                    if summary.income > 0 || summary.outflow > 0 {
+                    if summary.totalIn > 0 || summary.totalOut > 0 {
                         Label(summary.overspent
                               ? "Gastaste \(Money.format(summary.deficit)) más de lo que te entró"
                               : "Te sobran \(Money.format(summary.saved)) de lo que te entró",
@@ -34,8 +34,8 @@ struct HomeView: View {
                             .foregroundStyle(summary.overspent ? Color.red : Color.green)
                             .font(.subheadline.weight(.semibold))
                     }
-                    metric("Ingresos", summary.income, .green)
-                    metric("Gastos", summary.expenses)
+                    metric("Te entró", summary.totalIn, .green)
+                    metric("Gastos", summary.grossExpenses)
                     if summary.unregisteredCardSpending > 0 {
                         metric("Pagos a tarjeta", summary.unregisteredCardSpending)
                     }

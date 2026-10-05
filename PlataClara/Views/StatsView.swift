@@ -55,23 +55,23 @@ struct StatsView: View {
                 }
 
                 Section {
-                    row("Ingresos", summary.income, color: .green)
+                    row("Ingresos (te pagaron o te enviaron)", summary.income, color: .green)
+                    if summary.refunds > 0 {
+                        row("Reembolsos de compras", summary.refunds, color: .green)
+                    }
+                    row("Total que te entró", summary.totalIn, color: .green, bold: true)
                 } header: {
                     Text("Lo que te entró")
                 } footer: {
-                    Text("Salario, transferencias que te hicieron y otros ingresos. Los reembolsos no cuentan aquí: se restan de tus gastos.")
+                    Text("Es lo mismo que «lo que entró a tu cuenta» en el extracto del banco.")
                 }
 
                 Section {
-                    row("Compras, envíos y pagos", summary.grossExpenses)
-                    if summary.refunds > 0 {
-                        row("Reembolsos que te devolvieron", -summary.refunds, color: .green)
-                        row("Gastos", summary.expenses, bold: true)
+                    row("Gastos (compras y envíos)", summary.grossExpenses)
+                    if summary.unregisteredCardSpending > 0 {
+                        row("Pagos a tarjeta de crédito", summary.unregisteredCardSpending)
                     }
-                    if summary.cardPayments > 0 {
-                        row("Pagos a tarjeta de crédito", summary.cardPayments)
-                    }
-                    row("Total que salió", summary.outflow, color: summary.overspent ? .red : .primary, bold: true)
+                    row("Total que te salió", summary.totalOut, color: summary.overspent ? .red : .primary, bold: true)
                 } header: {
                     Text("Lo que te salió")
                 } footer: {
@@ -84,7 +84,7 @@ struct StatsView: View {
                         row("Gastos fijos que faltan por pagar", pending, color: .orange)
                         row("Ahorro posible", summary.possibleSaving, color: summary.possibleSaving < 0 ? .red : .green)
                     }
-                    textRow("Tasa de ahorro", summary.income > 0 ? "\(Int((summary.savingsRate * 100).rounded())) %" : "—")
+                    textRow("Tasa de ahorro", summary.totalIn > 0 ? "\(Int((Double(summary.saved) / Double(summary.totalIn) * 100).rounded())) %" : "—")
                     row("Gasto diario promedio",
                         Stats.averageDailyExpense(expenses: summary.outflow, interval: month, today: .now, calendar: calendar))
                 }
@@ -142,7 +142,7 @@ struct StatsView: View {
 
     @ViewBuilder
     private func verdict(_ s: MonthSummary) -> some View {
-        if s.income == 0 && s.outflow == 0 {
+        if s.totalIn == 0 && s.totalOut == 0 {
             Text("Todavía no hay movimientos este mes.").foregroundStyle(.secondary)
         } else {
             VStack(alignment: .leading, spacing: 6) {
@@ -152,12 +152,12 @@ struct StatsView: View {
                       systemImage: s.overspent ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
                     .font(.headline)
                     .foregroundStyle(s.overspent ? Color.red : Color.green)
-                Text("Te entró \(Money.format(s.income)) · te salió \(Money.format(s.outflow))")
+                Text("Te entró \(Money.format(s.totalIn)) · te salió \(Money.format(s.totalOut))")
                     .font(.subheadline).foregroundStyle(.secondary)
-                if s.income > 0 {
-                    ProgressView(value: Double(min(s.outflow, s.income)), total: Double(s.income))
-                        .tint(s.overspent ? .red : (Double(s.outflow) / Double(s.income) > 0.85 ? .orange : .green))
-                    Text("Usaste el \(Int((Double(s.outflow) / Double(s.income) * 100).rounded())) % de lo que te entró")
+                if s.totalIn > 0 {
+                    ProgressView(value: Double(min(s.totalOut, s.totalIn)), total: Double(s.totalIn))
+                        .tint(s.overspent ? .red : (Double(s.totalOut) / Double(s.totalIn) > 0.85 ? .orange : .green))
+                    Text("Usaste el \(Int((Double(s.totalOut) / Double(s.totalIn) * 100).rounded())) % de lo que te entró")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -198,8 +198,8 @@ struct StatsView: View {
             let s = Stats.summary(movements: snapshots, in: Stats.monthInterval(containing: date, calendar: calendar),
                                   pendingFixed: 0, ownSavingsAccounts: savings)
             let label = Fecha.mesCorto(date)
-            return [MonthBar(label: label, series: "Te entró", amount: s.income),
-                    MonthBar(label: label, series: "Te salió", amount: s.outflow)]
+            return [MonthBar(label: label, series: "Te entró", amount: s.totalIn),
+                    MonthBar(label: label, series: "Te salió", amount: s.totalOut)]
         }
     }
 }

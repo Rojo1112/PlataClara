@@ -31,6 +31,10 @@ public struct MonthSummary: Equatable, Sendable {
     public var deficit: Int { max(0, outflow - income) }
     /// Gastos antes de descontar reembolsos.
     public var grossExpenses: Int { expenses + refunds }
+    /// Todo lo que entró a las cuentas, como lo muestra el banco: ingresos más reembolsos.
+    public var totalIn: Int { income + refunds }
+    /// Todo lo que salió de las cuentas, como lo muestra el banco: gastos brutos más pagos a tarjeta no registrados.
+    public var totalOut: Int { grossExpenses + unregisteredCardSpending }
     public var possibleSaving: Int { saved - pendingFixed }
     public var savingsRate: Double { income > 0 ? Double(saved) / Double(income) : 0 }
 }
