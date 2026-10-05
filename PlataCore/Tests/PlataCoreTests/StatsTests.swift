@@ -1,0 +1,54 @@
+import XCTest
+@testable import PlataCore
+
+final class StatsTests: XCTestCase {
+    let nu = UUID()
+    let tarjeta = UUID()
+    var octubre: DateInterval { Stats.monthInterval(containing: fecha(2026, 10, 15), calendar: bogota) }
+
+    var movimientos: [MovementSnapshot] {
+        [
+            MovementSnapshot(amount: 3_000_000, date: fecha(2026, 10, 1), kind: .ingreso, method: .transferencia, accountID: nu, categoryName: "Salario"),
+            MovementSnapshot(amount: 200_000, date: fecha(2026, 10, 5), kind: .gasto, method: .credito, accountID: tarjeta, categoryName: "Mercado"),
+            MovementSnapshot(amount: 50_000, date: fecha(2026, 10, 6), kind: .gasto, method: .qr, accountID: nu, categoryName: "Restaurantes"),
+            MovementSnapshot(amount: 10_000, date: fecha(2026, 10, 7), kind: .gasto, method: .llave, accountID: nu),
+            MovementSnapshot(amount: 200_000, date: fecha(2026, 10, 20), kind: .transferencia, method: .transferencia, accountID: nu, destinationAccountID: tarjeta),
+            MovementSnapshot(amount: 999, date: fecha(2026, 10, 8), kind: .gasto, method: .debito, accountID: nu, status: .porRevisar),
+            MovementSnapshot(amount: 70_000, date: fecha(2026, 9, 30, 23), kind: .gasto, method: .debito, accountID: nu)
+        ]
+    }
+
+    func testSummaryCountsCardPurchasesButNotCardPayments() {
+        let s = Stats.summary(movements: movimientos, in: octubre, pendingFixed: 1_000_000)
+        XCTAssertEqual(s.income, 3_000_000)
+        XCTAssertEqual(s.expenses, 260_000)
+        XCTAssertEqual(s.saved, 2_740_000)
+        XCTAssertEqual(s.possibleSaving, 1_740_000)
+        XCTAssertEqual(s.savingsRate, 2_740_000.0 / 3_000_000.0, accuracy: 0.0001)
+    }
+
+    func testSavingsRateIsZeroWithoutIncome() {
+        XCTAssertEqual(MonthSummary(income: 0, expenses: 5_000, pendingFixed: 0).savingsRate, 0)
+    }
+
+    func testExpensesByCategorySortedByAmount() {
+        XCTAssertEqual(Stats.expensesByCategory(movements: movimientos, in: octubre), [
+            CategoryTotal(name: "Mercado", amount: 200_000),
+            CategoryTotal(name: "Restaurantes", amount: 50_000),
+            CategoryTotal(name: "Sin categoría", amount: 10_000)
+        ])
+    }
+
+    func testExpensesByMethod() {
+        XCTAssertEqual(Stats.expensesByMethod(movements: movimientos, in: octubre), [
+            MethodTotal(method: .credito, amount: 200_000),
+            MethodTotal(method: .qr, amount: 50_000),
+            MethodTotal(method: .llave, amount: 10_000)
+        ])
+    }
+
+    func testAverageDailyExpense() {
+        XCTAssertEqual(Stats.averageDailyExpense(expenses: 310_000, interval: octubre, today: fecha(2026, 10, 10), calendar: bogota), 31_000)
+        XCTAssertEqual(Stats.averageDailyExpense(expenses: 310_000, interval: octubre, today: fecha(2026, 11, 5), calendar: bogota), 10_000)
+    }
+}
