@@ -16,6 +16,9 @@ public enum ScreenshotParser {
         pattern: #"^(?:(?:[\d:%\s]|[2-5]G|LTE|Wi-?Fi)+|buscar movimiento|movimientos)$"#, options: [.caseInsensitive])
     private static let weekdays = ["domingo": 1, "lunes": 2, "martes": 3, "miercoles": 4, "jueves": 5, "viernes": 6, "sabado": 7]
 
+    /// Línea que separa el texto de una captura del de la siguiente.
+    public static let pageBreak = "<<<captura>>>"
+
     public static func parse(text: String, now: Date, calendar: Calendar) -> [StatementEntry] {
         var entries: [StatementEntry] = []
         var day: Date?
@@ -29,6 +32,8 @@ public enum ScreenshotParser {
             guard let amountValue = value, amountValue > 0 else { return }
             let description = clean(desc.joined(separator: " "))
             guard !description.isEmpty else { return }
+            // Sin hora propia ni encabezado de día es una fila cortada al borde de la captura: se descarta.
+            guard date != nil || day != nil else { return }
             let when = date ?? day.flatMap { calendar.date(byAdding: .hour, value: 12, to: $0) } ?? now
             entries.append(StatementEntry(date: when, description: description, amount: amountValue,
                                           kind: kind(of: description, sign: sign), balance: nil))
@@ -37,6 +42,8 @@ public enum ScreenshotParser {
         for raw in text.components(separatedBy: .newlines) {
             let line = raw.trimmingCharacters(in: .whitespaces)
             if line.isEmpty { continue }
+            if line == pageBreak { flush(nil); pre = nil; continue }
+            if TextNormalizer.fold(line).contains("buscar movimiento") { continue }
 
             if let header = dayHeader(TextNormalizer.fold(line), now: now, calendar: calendar) {
                 flush(nil); pre = nil; day = header
@@ -65,7 +72,7 @@ public enum ScreenshotParser {
                 sign = signText.map { $0 == "+" ? Character("+") : Character("-") }
                 value = parsed
                 let rest = ns.replacingCharacters(in: match.range, with: "").trimmingCharacters(in: CharacterSet(charactersIn: " -|·"))
-                if desc.isEmpty, let previous = pre { desc.append(previous) }
+                if desc.isEmpty, let previous = pre, TextNormalizer.fold(previous).contains("gracias") { desc.append(previous) }
                 pre = nil
                 if !rest.isEmpty { desc.append(rest) }
                 continue
@@ -76,7 +83,7 @@ public enum ScreenshotParser {
 
         var seen = Set<String>()
         return entries.filter { entry in
-            let key = "\(entry.date.timeIntervalSince1970)|\(entry.amount)|\(TextNormalizer.fold(entry.description))"
+            let key = "\(entry.date.timeIntervalSince1970)|\(entry.amount)|\(entry.kind.rawValue)"
             return seen.insert(key).inserted
         }
     }
