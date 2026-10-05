@@ -18,9 +18,9 @@ struct StatsView: View {
     @State private var monthOffset = 0
 
     var body: some View {
-        let calendar = Calendar.current
+        let calendar = Calendar.gregoriano
         let reference = calendar.date(byAdding: .month, value: monthOffset, to: .now) ?? .now
-        let month = Stats.monthInterval(containing: reference)
+        let month = Stats.monthInterval(containing: reference, calendar: calendar)
         let names = Dictionary(categories.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
         let snapshots = movements.map { m in m.snapshot(categoryName: m.categoryID.flatMap { names[$0] }) }
         let pending = RecurringService.pendingTotal(monthKey: RecurringPlanner.monthKey(for: reference, calendar: calendar),
@@ -36,7 +36,7 @@ struct StatsView: View {
                     HStack {
                         Button { monthOffset -= 1 } label: { Image(systemName: "chevron.left") }
                         Spacer()
-                        Text(reference.formatted(.dateTime.month(.wide).year())).font(.headline)
+                        Text(Fecha.mesAnio(reference)).font(.headline)
                         Spacer()
                         Button { monthOffset += 1 } label: { Image(systemName: "chevron.right") }
                             .disabled(monthOffset >= 0)
@@ -50,7 +50,7 @@ struct StatsView: View {
                     row("Ahorro posible", Money.format(summary.possibleSaving))
                     row("Tasa de ahorro", "\(Int((summary.savingsRate * 100).rounded())) %")
                     row("Gasto diario promedio",
-                        Money.format(Stats.averageDailyExpense(expenses: summary.expenses, interval: month, today: .now)))
+                        Money.format(Stats.averageDailyExpense(expenses: summary.expenses, interval: month, today: .now, calendar: calendar)))
                 }
                 Section("Gastos por categoría") {
                     if byCategory.isEmpty {
@@ -87,8 +87,8 @@ struct StatsView: View {
     private func lastSixMonths(snapshots: [MovementSnapshot], reference: Date, calendar: Calendar) -> [MonthBar] {
         (0..<6).reversed().flatMap { back -> [MonthBar] in
             let date = calendar.date(byAdding: .month, value: -back, to: reference) ?? reference
-            let s = Stats.summary(movements: snapshots, in: Stats.monthInterval(containing: date), pendingFixed: 0)
-            let label = date.formatted(.dateTime.month(.abbreviated))
+            let s = Stats.summary(movements: snapshots, in: Stats.monthInterval(containing: date, calendar: calendar), pendingFixed: 0)
+            let label = Fecha.mesCorto(date)
             return [MonthBar(label: label, series: "Ingresos", amount: s.income),
                     MonthBar(label: label, series: "Gastos", amount: s.expenses)]
         }

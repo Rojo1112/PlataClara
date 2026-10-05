@@ -15,7 +15,7 @@ struct MovementRow: View {
                 .foregroundStyle(category.map { Color(hex: $0.colorHex) } ?? Color.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(movement.merchant ?? category?.name ?? movement.kind.displayName).lineLimit(1)
-                Text("\(movement.method.displayName) · \(account?.name ?? "Sin cuenta") · \(movement.date.formatted(date: .abbreviated, time: .shortened))")
+                Text("\(movement.method.displayName) · \(account?.name ?? "Sin cuenta") · \(Fecha.diaHora(movement.date))")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()

@@ -16,7 +16,7 @@ struct BackupFolderSection: View {
             LabeledContent("Carpeta", value: hasFolder ? "Elegida" : "Sin elegir")
                 .onAppear(perform: refresh)
             if let last {
-                LabeledContent("Último respaldo", value: last.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("Último respaldo", value: Fecha.diaHora(last))
             }
             Button(hasFolder ? "Cambiar carpeta…" : "Elegir carpeta…") { choosing = true }
                 .fileImporter(isPresented: $choosing, allowedContentTypes: [.folder]) { result in

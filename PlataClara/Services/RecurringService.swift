@@ -5,7 +5,7 @@ import PlataCore
 
 @MainActor
 enum RecurringService {
-    static var calendar: Calendar { .current }
+    static var calendar: Calendar { .gregoriano }
 
     static func refresh(context: ModelContext, now: Date = .now) {
         ensureMonth(containing: now, context: context)

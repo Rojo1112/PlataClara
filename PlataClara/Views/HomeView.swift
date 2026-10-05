@@ -12,9 +12,9 @@ struct HomeView: View {
     var body: some View {
         let snapshots = movements.map { $0.snapshot(categoryName: nil) }
         let accountSnapshots = accounts.map(\.snapshot)
-        let key = RecurringPlanner.monthKey(for: .now, calendar: .current)
+        let key = RecurringPlanner.monthKey(for: .now, calendar: .gregoriano)
         let pending = RecurringService.pendingTotal(monthKey: key, occurrences: occurrences, recurring: recurring)
-        let summary = Stats.summary(movements: snapshots, in: Stats.monthInterval(containing: .now), pendingFixed: pending)
+        let summary = Stats.summary(movements: snapshots, in: Stats.monthInterval(containing: .now, calendar: .gregoriano), pendingFixed: pending)
         let toReview = movements.filter { $0.status == .porRevisar }.count
 
         NavigationStack {

@@ -57,7 +57,7 @@ enum BackupFolderService {
         defer { if access { folder.stopAccessingSecurityScopedResource() } }
         do {
             let data = try BackupCodec.encode(BackupService.makeFile(context: context))
-            let name = BackupRotation.fileName(for: now, calendar: .current)
+            let name = BackupRotation.fileName(for: now, calendar: .gregoriano)
             try data.write(to: folder.appendingPathComponent(name), options: .atomic)
             for old in BackupRotation.filesToDelete(names: backupNames(in: folder), keep: keepCount) {
                 try? FileManager.default.removeItem(at: folder.appendingPathComponent(old))

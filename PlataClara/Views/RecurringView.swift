@@ -10,7 +10,7 @@ struct RecurringView: View {
     @State private var editing: RecurringExpense?
     @State private var paying: RecurringOccurrence?
 
-    private var monthKey: String { RecurringPlanner.monthKey(for: .now, calendar: .current) }
+    private var monthKey: String { RecurringPlanner.monthKey(for: .now, calendar: .gregoriano) }
     private var thisMonth: [RecurringOccurrence] {
         occurrences.filter { $0.monthKey == monthKey }.sorted { $0.dueDate < $1.dueDate }
     }
@@ -73,7 +73,7 @@ struct RecurringView: View {
             Image(systemName: icon(for: occurrence.status)).foregroundStyle(color(for: occurrence.status))
             VStack(alignment: .leading) {
                 Text(item.name)
-                Text("\(occurrence.status.displayName) · vence el \(occurrence.dueDate.formatted(.dateTime.day().month()))")
+                Text("\(occurrence.status.displayName) · vence el \(Fecha.diaMes(occurrence.dueDate))")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()

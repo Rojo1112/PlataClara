@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import SwiftData
 import PDFKit
 import UniformTypeIdentifiers
@@ -12,6 +13,7 @@ struct StatementImportView: View {
     @State private var accountID: UUID?
     @State private var importing = false
     @State private var rawText = ""
+    @State private var declared = StatementTotals(income: nil, outflow: nil)
     @State private var entries: [StatementEntry] = []
     @State private var duplicates: Set<Int> = []
     @State private var selected: Set<Int> = []
@@ -49,9 +51,28 @@ struct StatementImportView: View {
                 Section { HStack { ProgressView(); Text("  Leyendo la imagen del PDF…") } }
             }
 
+            if !entries.isEmpty, let check = totalsCheck {
+                Section {
+                    checkRow("Entradas", read: check.readIncome, declared: declared.income, matches: check.incomeMatches)
+                    checkRow("Salidas", read: check.readOutflow, declared: declared.outflow, matches: check.outflowMatches)
+                } header: {
+                    Text("¿Coincide con el resumen del PDF?")
+                } footer: {
+                    Text(summaryFooter(check))
+                }
+            }
+
             if document != nil, !needsPassword, !readingImage, !entries.isEmpty, !usedOCR {
                 Section {
                     Button("¿No coinciden los totales? Releer como imagen (OCR)", action: readImage)
+                }
+            }
+
+            if !rawText.isEmpty {
+                Section {
+                    Button("Copiar el texto leído (para pedir ayuda)") { UIPasteboard.general.string = rawText }
+                } footer: {
+                    Text("Copia el texto que la app sacó del archivo. Pégalo con los datos personales tachados si necesitas que revisen la lectura.")
                 }
             }
 
@@ -75,7 +96,7 @@ struct StatementImportView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(entries[index].description.isEmpty ? "(sin descripción)" : entries[index].description).lineLimit(2)
-                                    Text("\(entries[index].date.formatted(date: .abbreviated, time: .omitted)) · \(entries[index].kind.displayName)\(duplicates.contains(index) ? " · ya registrado" : "")")
+                                    Text("\(Fecha.dia(entries[index].date)) · \(entries[index].kind.displayName)\(duplicates.contains(index) ? " · ya registrado" : "")")
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
@@ -102,6 +123,35 @@ struct StatementImportView: View {
 
     private func total(of kind: MovementKind) -> Int {
         selected.reduce(0) { $0 + (entries[$1].kind == kind ? entries[$1].amount : 0) }
+    }
+
+    /// Lo leído contra lo que el propio extracto declara («Lo que entró / salió de tu cuenta»), si lo trae.
+    private var totalsCheck: TotalsCheck? {
+        guard declared.income != nil || declared.outflow != nil else { return nil }
+        return StatementReconciler.check(entries: entries, against: declared)
+    }
+
+    @ViewBuilder
+    private func checkRow(_ title: String, read: Int, declared: Int?, matches: Bool?) -> some View {
+        if let declared {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(title)
+                    Spacer()
+                    Image(systemName: matches == true ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(matches == true ? Color.green : Color.orange)
+                }
+                Text("El PDF dice \(Money.format(declared)) · leí \(Money.format(read))")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func summaryFooter(_ check: TotalsCheck) -> String {
+        if check.incomeMatches != false && check.outflowMatches != false {
+            return "Lo leído coincide con el resumen del extracto. Puedes importar con tranquilidad."
+        }
+        return "Hay diferencias: faltan o sobran movimientos. Prueba «Releer como imagen (OCR)» o copia el texto leído para revisarlo."
     }
 
     private func load(_ url: URL) {
@@ -158,11 +208,13 @@ struct StatementImportView: View {
 
     private func process(text: String, announceEmpty: Bool) {
         rawText = text
-        let year = Calendar.current.component(.year, from: .now)
-        entries = StatementParser.parse(text: text, calendar: .current, defaultYear: year)
+        let calendar = Calendar.gregoriano
+        let year = calendar.component(.year, from: .now)
+        entries = StatementParser.parse(text: text, calendar: calendar, defaultYear: year)
+        declared = StatementParser.declaredTotals(in: text)
         let snapshots = movements.map { $0.snapshot(categoryName: nil) }
         duplicates = Set(entries.indices.filter {
-            StatementReconciler.isDuplicate(entries[$0], accountID: accountID, existing: snapshots, calendar: .current)
+            StatementReconciler.isDuplicate(entries[$0], accountID: accountID, existing: snapshots, calendar: calendar)
         })
         selected = Set(entries.indices).subtracting(duplicates)
         if entries.isEmpty && announceEmpty {
