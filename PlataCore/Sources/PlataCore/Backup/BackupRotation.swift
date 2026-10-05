@@ -3,7 +3,9 @@ import Foundation
 /// Reglas de nombres y rotación del respaldo automático en carpeta.
 public enum BackupRotation {
     public static func fileName(for date: Date, calendar: Calendar) -> String {
-        let c = calendar.dateComponents([.year, .month, .day], from: date)
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = calendar.timeZone
+        let c = gregorian.dateComponents([.year, .month, .day], from: date)
         return String(format: "PlataClara-%04d-%02d-%02d.json", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 

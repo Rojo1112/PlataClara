@@ -34,4 +34,11 @@ final class BackupRotationTests: XCTestCase {
         XCTAssertTrue(BackupRotation.shouldWrite(accounts: 1, movements: 0))
         XCTAssertTrue(BackupRotation.shouldWrite(accounts: 0, movements: 3))
     }
+
+    func testJapaneseCalendarStillNamesFilesAndMonthsInGregorianYears() {
+        var japanese = Calendar(identifier: .japanese)
+        japanese.timeZone = TimeZone(identifier: "America/Bogota")!
+        XCTAssertEqual(BackupRotation.fileName(for: fecha(2026, 10, 4), calendar: japanese), "PlataClara-2026-10-04.json")
+        XCTAssertEqual(RecurringPlanner.monthKey(for: fecha(2026, 10, 4), calendar: japanese), "2026-10")
+    }
 }

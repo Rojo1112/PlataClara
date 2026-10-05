@@ -42,7 +42,9 @@ public enum RecurringPlanner {
     public static let matchWindow: TimeInterval = 5 * 86_400
 
     public static func monthKey(for date: Date, calendar: Calendar) -> String {
-        let c = calendar.dateComponents([.year, .month], from: date)
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = calendar.timeZone
+        let c = gregorian.dateComponents([.year, .month], from: date)
         return String(format: "%04d-%02d", c.year ?? 0, c.month ?? 0)
     }
 

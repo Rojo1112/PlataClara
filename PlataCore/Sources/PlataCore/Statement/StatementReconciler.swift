@@ -13,4 +13,40 @@ public enum StatementReconciler {
             return abs(days) <= 1
         }
     }
+
+    /// Compara lo leído con los totales que el extracto declara. La tolerancia es 1 peso por movimiento,
+    /// porque se descartan los centavos de cada uno.
+    public static func check(entries: [StatementEntry], against totals: StatementTotals) -> TotalsCheck {
+        let readIncome = entries.filter { $0.kind == .ingreso }.reduce(0) { $0 + $1.amount }
+        let readOutflow = entries.filter { $0.kind != .ingreso }.reduce(0) { $0 + $1.amount }
+        let tolerance = max(entries.count, 1)
+        return TotalsCheck(
+            incomeMatches: totals.income.map { abs(readIncome - $0) <= tolerance },
+            outflowMatches: totals.outflow.map { abs(readOutflow - $0) <= tolerance },
+            readIncome: readIncome, readOutflow: readOutflow)
+    }
+}
+
+public struct StatementTotals: Equatable, Sendable {
+    public let income: Int?
+    public let outflow: Int?
+
+    public init(income: Int?, outflow: Int?) {
+        self.income = income
+        self.outflow = outflow
+    }
+}
+
+public struct TotalsCheck: Equatable, Sendable {
+    public let incomeMatches: Bool?
+    public let outflowMatches: Bool?
+    public let readIncome: Int
+    public let readOutflow: Int
+
+    public init(incomeMatches: Bool?, outflowMatches: Bool?, readIncome: Int, readOutflow: Int) {
+        self.incomeMatches = incomeMatches
+        self.outflowMatches = outflowMatches
+        self.readIncome = readIncome
+        self.readOutflow = readOutflow
+    }
 }

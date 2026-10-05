@@ -43,7 +43,21 @@ public enum StatementParser {
         let lines = text.components(separatedBy: .newlines)
         let single = lines.compactMap { parseLine($0, calendar: calendar, defaultYear: year) }
         let stacked = parseStacked(lines: lines, calendar: calendar, year: year)
-        return stacked.count > single.count ? stacked : single
+        let stream = parseStream(lines: lines, calendar: calendar, year: year)
+        return [single, stacked, stream].reduce(single) { $1.count > $0.count ? $1 : $0 }
+    }
+
+    /// Totales que el propio extracto declara en su resumen («Lo que entró / salió de tu cuenta»).
+    public static func declaredTotals(in text: String) -> StatementTotals {
+        StatementTotals(income: declared(#"lo que entr[oó] a tu cuenta"#, in: text),
+                        outflow: declared(#"lo que sali[oó] de tu cuenta"#, in: text))
+    }
+
+    private static func declared(_ label: String, in text: String) -> Int? {
+        let pattern = label + #"[\s\S]{0,60}?[+-]?\s?\$\s?(\d{1,3}(?:\.\d{3})*|\d+)(?:,\d{1,2})?"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+              let digits = firstGroup(regex, in: text) else { return nil }
+        return Int(digits.replacingOccurrences(of: ".", with: ""))
     }
 
     // MARK: una línea por movimiento
@@ -126,6 +140,60 @@ public enum StatementParser {
         return entries
     }
 
+    // MARK: flujo de texto (sin depender de cómo se parten las líneas)
+
+    private static let streamDate = try! NSRegularExpression(
+        pattern: #"(?<![\w/])(\d{1,2})\s+("# + monthNames + #")(?![a-zA-Z])\.?(?:\s+(\d{4}))?"#, options: [.caseInsensitive])
+    private static let streamAmount = try! NSRegularExpression(
+        pattern: #"(?<![\w.,])([-+])\s?\$\s?(\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{1,2})?(?!\d)"#)
+
+    /// Lee todo el texto como una secuencia «fecha, descripción, monto con signo y $», sin importar si
+    /// el PDF partió cada fila en una, dos o tres líneas. Una descripción con `$` o muy larga es del
+    /// resumen, no de un movimiento, y se descarta.
+    static func parseStream(lines: [String], calendar: Calendar, year: Int?) -> [StatementEntry] {
+        let cleaned = lines.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty && !matches(pageMarker, $0) }
+        let text = cleaned.joined(separator: "\n")
+        let ns = text as NSString
+        let full = NSRange(location: 0, length: ns.length)
+
+        enum Item {
+            case date(Date, end: Int)
+            case amount(value: Int, sign: String, start: Int)
+        }
+        var items: [(position: Int, item: Item)] = []
+        for m in streamDate.matches(in: text, range: full) {
+            guard let date = makeDate(from: m, in: text, dayIndex: 1, monthIndex: 2, yearIndex: 3, calendar: calendar, defaultYear: year) else { continue }
+            items.append((m.range.location, .date(date, end: m.range.location + m.range.length)))
+        }
+        for m in streamAmount.matches(in: text, range: full) {
+            let sign = ns.substring(with: m.range(at: 1))
+            let digits = ns.substring(with: m.range(at: 2)).replacingOccurrences(of: ".", with: "")
+            guard let value = Int(digits), value > 0 else { continue }
+            items.append((m.range.location, .amount(value: value, sign: sign, start: m.range.location)))
+        }
+        items.sort { $0.position < $1.position }
+
+        var entries: [StatementEntry] = []
+        var pending: (date: Date, end: Int)?
+        for entry in items {
+            switch entry.item {
+            case .date(let date, let end):
+                pending = (date, end)
+            case .amount(let value, let sign, let start):
+                guard let open = pending, start >= open.end else { continue }
+                pending = nil
+                let description = ns.substring(with: NSRange(location: open.end, length: start - open.end))
+                    .components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+                    .trimmingCharacters(in: CharacterSet(charactersIn: " -|"))
+                guard !description.contains("$"), description.count <= 140 else { continue }
+                var kind: MovementKind = sign == "+" ? .ingreso : .gasto
+                kind = asTransferIfCardPayment(kind, description: description)
+                entries.append(StatementEntry(date: open.date, description: description, amount: value, kind: kind, balance: nil))
+            }
+        }
+        return entries
+    }
+
     /// Línea que es solo un monto: debe traer `$`, signo o separador (un "2026" suelto no cuenta).
     private static func amountLine(_ line: String) -> (value: Int, sign: Character?)? {
         let ns = line as NSString
@@ -146,6 +214,13 @@ public enum StatementParser {
 
     private static func matches(_ regex: NSRegularExpression, _ text: String) -> Bool {
         regex.firstMatch(in: text, range: NSRange(location: 0, length: (text as NSString).length)) != nil
+    }
+
+    private static func firstGroup(_ regex: NSRegularExpression, in text: String) -> String? {
+        let ns = text as NSString
+        guard let m = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)),
+              m.numberOfRanges > 1, m.range(at: 1).location != NSNotFound else { return nil }
+        return ns.substring(with: m.range(at: 1))
     }
 
     private static func firstInt(_ regex: NSRegularExpression, in text: String) -> Int? {
@@ -173,13 +248,16 @@ public enum StatementParser {
 
     private static func buildDate(year: Int, month: Int, day: Int, calendar: Calendar) -> Date? {
         guard (1...12).contains(month), (1...31).contains(day) else { return nil }
+        // Siempre gregoriano: con el calendario japonés del teléfono, 2026 sería el año 2026 de la era Reiwa.
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = calendar.timeZone
         var components = DateComponents()
         components.year = year
         components.month = month
         components.day = day
         components.hour = 12
-        guard let date = calendar.date(from: components) else { return nil }
-        let check = calendar.dateComponents([.month, .day], from: date)
+        guard let date = gregorian.date(from: components) else { return nil }
+        let check = gregorian.dateComponents([.month, .day], from: date)
         return check.month == month && check.day == day ? date : nil
     }
 
