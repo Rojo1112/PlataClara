@@ -14,7 +14,9 @@ struct HomeView: View {
         let accountSnapshots = accounts.map(\.snapshot)
         let key = RecurringPlanner.monthKey(for: .now, calendar: .gregoriano)
         let pending = RecurringService.pendingTotal(monthKey: key, occurrences: occurrences, recurring: recurring)
-        let summary = Stats.summary(movements: snapshots, in: Stats.monthInterval(containing: .now, calendar: .gregoriano), pendingFixed: pending)
+        let savings = Set(accounts.filter { $0.kind != .credito }.map(\.id))
+        let summary = Stats.summary(movements: snapshots, in: Stats.monthInterval(containing: .now, calendar: .gregoriano),
+                                    pendingFixed: pending, ownSavingsAccounts: savings)
         let toReview = movements.filter { $0.status == .porRevisar }.count
 
         NavigationStack {
@@ -24,8 +26,19 @@ struct HomeView: View {
                     metric("Deuda en tarjetas", Ledger.totalDebt(accounts: accountSnapshots, movements: snapshots), .red)
                 }
                 Section("Este mes") {
+                    if summary.income > 0 || summary.outflow > 0 {
+                        Label(summary.overspent
+                              ? "Gastaste \(Money.format(summary.deficit)) más de lo que te entró"
+                              : "Te sobran \(Money.format(summary.saved)) de lo que te entró",
+                              systemImage: summary.overspent ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
+                            .foregroundStyle(summary.overspent ? Color.red : Color.green)
+                            .font(.subheadline.weight(.semibold))
+                    }
                     metric("Ingresos", summary.income, .green)
                     metric("Gastos", summary.expenses)
+                    if summary.unregisteredCardSpending > 0 {
+                        metric("Pagos a tarjeta", summary.unregisteredCardSpending)
+                    }
                     metric("Ahorro", summary.saved, summary.saved < 0 ? .red : .primary)
                     metric("Fijos pendientes", pending, .orange)
                     metric("Ahorro posible", summary.possibleSaving, summary.possibleSaving < 0 ? .red : .green)

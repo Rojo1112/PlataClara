@@ -4,14 +4,33 @@ public struct MonthSummary: Equatable, Sendable {
     public let income: Int
     public let expenses: Int
     public let pendingFixed: Int
+    /// Devoluciones de compras: ya están descontadas de `expenses`.
+    public let refunds: Int
+    /// Pagos a tarjeta de crédito hechos en el mes.
+    public let cardPayments: Int
+    /// Parte de los pagos a tarjeta que no está cubierta por compras con crédito registradas en el mes:
+    /// cubre compras que no están en la app, así que cuenta como plata que salió.
+    public let unregisteredCardSpending: Int
 
-    public init(income: Int, expenses: Int, pendingFixed: Int) {
+    public init(income: Int, expenses: Int, pendingFixed: Int, refunds: Int = 0,
+                cardPayments: Int = 0, unregisteredCardSpending: Int = 0) {
         self.income = income
         self.expenses = expenses
         self.pendingFixed = pendingFixed
+        self.refunds = refunds
+        self.cardPayments = cardPayments
+        self.unregisteredCardSpending = unregisteredCardSpending
     }
 
-    public var saved: Int { income - expenses }
+    /// Todo lo que salió del bolsillo: gastos más lo pagado a tarjetas por compras no registradas.
+    public var outflow: Int { expenses + unregisteredCardSpending }
+    public var saved: Int { income - outflow }
+    /// true si en el mes salió más plata de la que entró.
+    public var overspent: Bool { outflow > income }
+    /// Cuánto se gastó de más (0 si no se pasó).
+    public var deficit: Int { max(0, outflow - income) }
+    /// Gastos antes de descontar reembolsos.
+    public var grossExpenses: Int { expenses + refunds }
     public var possibleSaving: Int { saved - pendingFixed }
     public var savingsRate: Double { income > 0 ? Double(saved) / Double(income) : 0 }
 }
@@ -37,13 +56,44 @@ public enum Stats {
         return DateInterval(start: start, end: end)
     }
 
-    public static func summary(movements: [MovementSnapshot], in interval: DateInterval, pendingFixed: Int) -> MonthSummary {
+    /// - Parameter ownSavingsAccounts: cuentas propias que no son tarjeta. Una transferencia hacia una de ellas
+    ///   es mover plata entre bolsillos; cualquier otra transferencia se toma como pago a tarjeta.
+    public static func summary(movements: [MovementSnapshot], in interval: DateInterval, pendingFixed: Int,
+                               ownSavingsAccounts: Set<UUID> = []) -> MonthSummary {
         let ms = confirmed(movements, in: interval)
         let income = ms.filter { $0.kind == .ingreso && !$0.isRefund }.reduce(0) { $0 + $1.amount }
         let refunds = ms.filter { $0.kind == .ingreso && $0.isRefund }.reduce(0) { $0 + $1.amount }
         let spent = ms.filter { $0.kind == .gasto }.reduce(0) { $0 + $1.amount }
         let expenses = max(0, spent - refunds)
-        return MonthSummary(income: income, expenses: expenses, pendingFixed: pendingFixed)
+        let cardPayments = ms.filter { m in
+            m.kind == .transferencia && !(m.destinationAccountID.map(ownSavingsAccounts.contains) ?? false)
+        }.reduce(0) { $0 + $1.amount }
+        let creditPurchases = ms.filter { $0.kind == .gasto && $0.method == .credito }.reduce(0) { $0 + $1.amount }
+        return MonthSummary(income: income, expenses: expenses, pendingFixed: pendingFixed,
+                            refunds: min(refunds, spent), cardPayments: cardPayments,
+                            unregisteredCardSpending: max(0, cardPayments - creditPurchases))
+    }
+
+    /// Gastos del mes agrupados por categoría; si un gasto no tiene, se adivina por su descripción.
+    public static func spendingByCategory(movements: [MovementSnapshot], in interval: DateInterval) -> [CategoryTotal] {
+        let grouped = Dictionary(grouping: expenses(movements, in: interval)) { m in
+            m.categoryName ?? AutoCategory.guess(m.merchant) ?? uncategorized
+        }
+        return grouped
+            .map { CategoryTotal(name: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.amount != $1.amount ? $0.amount > $1.amount : $0.name < $1.name }
+    }
+
+    /// A quién o dónde se fue más plata: gastos del mes agrupados por comercio o persona, de mayor a menor.
+    public static func topSpending(movements: [MovementSnapshot], in interval: DateInterval, limit: Int = 8) -> [CategoryTotal] {
+        let grouped = Dictionary(grouping: expenses(movements, in: interval)) { m -> String in
+            let name = (m.merchant ?? m.categoryName ?? uncategorized).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+            return name.isEmpty ? uncategorized : name
+        }
+        return grouped
+            .map { CategoryTotal(name: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.amount != $1.amount ? $0.amount > $1.amount : $0.name < $1.name }
+            .prefix(limit).map { $0 }
     }
 
     public static func expensesByCategory(movements: [MovementSnapshot], in interval: DateInterval) -> [CategoryTotal] {

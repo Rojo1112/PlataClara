@@ -53,6 +53,6 @@ final class Movement {
     func snapshot(categoryName: String?) -> MovementSnapshot {
         MovementSnapshot(id: id, amount: amount, date: date, kind: kind, method: method, accountID: accountID,
                          destinationAccountID: destinationAccountID, categoryName: categoryName, status: status,
-                         isRefund: kind == .ingreso && MovementClassifier.isRefund(merchant ?? ""))
+                         isRefund: kind == .ingreso && MovementClassifier.isRefund(merchant ?? ""), merchant: merchant)
     }
 }

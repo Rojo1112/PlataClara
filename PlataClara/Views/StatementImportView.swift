@@ -65,8 +65,8 @@ struct StatementImportView: View {
 
             if !entries.isEmpty, let check = totalsCheck {
                 Section {
-                    checkRow("Entradas", read: check.readIncome, declared: declared.income, matches: check.incomeMatches)
-                    checkRow("Salidas", read: check.readOutflow, declared: declared.outflow, matches: check.outflowMatches)
+                    checkRow("Lo que te entró (ingresos y reembolsos)", read: check.readIncome, declared: declared.income, matches: check.incomeMatches)
+                    checkRow("Lo que te salió (gastos y pagos a tarjeta)", read: check.readOutflow, declared: declared.outflow, matches: check.outflowMatches)
                 } header: {
                     Text("¿Coincide con el resumen del PDF?")
                 } footer: {
@@ -90,16 +90,22 @@ struct StatementImportView: View {
 
             if !entries.isEmpty {
                 Section {
-                    LabeledContent("Entradas seleccionadas", value: Money.format(total(of: .ingreso)))
-                    LabeledContent("Salidas seleccionadas", value: Money.format(total(of: .gasto) + total(of: .transferencia)))
-                    LabeledContent("   · gastos", value: Money.format(total(of: .gasto)))
-                    LabeledContent("   · pagos a tarjeta (no son gasto)", value: Money.format(total(of: .transferencia)))
+                    LabeledContent("Ingresos", value: Money.format(selectedIncome(refunds: false)))
+                    LabeledContent("Reembolsos (se restan de los gastos)", value: Money.format(selectedIncome(refunds: true)))
+                    LabeledContent("Gastos", value: Money.format(total(of: .gasto)))
+                    LabeledContent("Pagos a tarjeta de crédito", value: Money.format(total(of: .transferencia)))
+                    let balance = total(of: .ingreso) - total(of: .gasto) - total(of: .transferencia)
+                    LabeledContent(balance < 0 ? "Salió más de lo que entró" : "Entró más de lo que salió",
+                                   value: Money.format(abs(balance)))
+                        .foregroundStyle(balance < 0 ? Color.red : Color.green)
                 } header: {
-                    Text("Compáralo con el resumen del extracto")
+                    Text("Lo que vas a importar")
                 } footer: {
-                    Text(usedOCR
-                         ? "Se leyó la imagen del PDF (OCR): revisa que cada monto esté bien antes de importar. Si estos totales no coinciden con los del extracto, desmarca o corrige lo que falle."
-                         : "Si estos totales coinciden con «lo que entró» y «lo que salió» del extracto, la lectura es correcta.")
+                    Text(fromScreenshots
+                         ? "Leído de capturas: revisa cada movimiento y desmarca lo tachado o con reloj en la app del banco."
+                         : usedOCR
+                         ? "Se leyó la imagen del PDF (OCR): revisa que cada monto esté bien antes de importar."
+                         : "Solo se cuentan los movimientos marcados.")
                 }
 
                 Section("Movimientos encontrados (\(selected.count) de \(entries.count) seleccionados)") {
@@ -137,6 +143,14 @@ struct StatementImportView: View {
 
     private func total(of kind: MovementKind) -> Int {
         selected.reduce(0) { $0 + (entries[$1].kind == kind ? entries[$1].amount : 0) }
+    }
+
+    private func selectedIncome(refunds: Bool) -> Int {
+        selected.reduce(0) { sum, index in
+            let entry = entries[index]
+            guard entry.kind == .ingreso, MovementClassifier.isRefund(entry.description) == refunds else { return sum }
+            return sum + entry.amount
+        }
     }
 
     /// Lo leído contra lo que el propio extracto declara («Lo que entró / salió de tu cuenta»), si lo trae.
