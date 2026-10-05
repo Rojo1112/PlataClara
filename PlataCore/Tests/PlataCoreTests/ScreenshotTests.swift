@@ -61,3 +61,39 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertEqual(ScreenshotParser.parse(text: text, now: now, calendar: cal).count, 1)
     }
 }
+
+final class ScreenshotOverlapTests: XCTestCase {
+    let cal = Calendar(identifier: .gregorian)
+
+    func testFilasCortadasYBuscadorNoCreanMovimientos() {
+        let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 5, hour: 13))!
+        let first = """
+        1:31
+        4G 84
+        Q Buscar movimiento
+        Recibiste de LIDY +$270.000,00
+        03 oct - 08:49 • Bre-B
+        Enviaste a MANUEL -$10.000,00
+        """
+        let second = """
+        Q Buscar movimiento
+        Enviaste a MANUEL ALEJANDRO -$10.000,00
+        02 oct - 02:02 • Bre-B
+        NOVAVENTA -$4.000,00
+        01 oct - 12:08
+        Recibiste de SOFIA +$4.000,00
+        """
+        let third = """
+        Recibiste de SOFIA SANTIS +$4.000,00
+        01 oct - 15:11 • Bre-B
+        NOVAVENTA -$4.000,00
+        01 oct - 12:08
+        """
+        let text = [first, second, third].joined(separator: "\n\(ScreenshotParser.pageBreak)\n")
+        let entries = ScreenshotParser.parse(text: text, now: now, calendar: cal)
+        XCTAssertEqual(entries.count, 4)
+        XCTAssertEqual(entries[0].description, "Recibiste de LIDY")
+        XCTAssertFalse(entries.contains { $0.description.contains("Buscar") })
+        XCTAssertEqual(entries.filter { $0.amount == 4_000 && $0.kind == .gasto }.count, 1)
+    }
+}

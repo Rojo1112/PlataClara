@@ -236,7 +236,7 @@ struct StatementImportView: View {
             document = nil
             needsPassword = false
             usedOCR = true
-            process(text: texts.joined(separator: "\n"), announceEmpty: true, screenshots: true)
+            process(text: texts.joined(separator: "\n\(ScreenshotParser.pageBreak)\n"), announceEmpty: true, screenshots: true)
         }
     }
 
