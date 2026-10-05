@@ -102,6 +102,72 @@ final class StatementTests: XCTestCase {
         XCTAssertTrue(parse("01 sep\nCompra en X\n-$1.000,00").isEmpty)
     }
 
+    // MARK: texto de PDF con filas partidas de distintas maneras
+    // Ejemplo sintético: una fila entera, una con el monto en la línea siguiente, una en tres líneas y una con descripción larga.
+    func testStreamHandlesMixedRowLayoutsAndIgnoresSummary() {
+        let text = """
+        Período
+        01 - 30 SEP 2026
+        Dinero en tu Cuenta Nu
+        $11.752,29
+        Rendimientos | 0,10% Efectivo Anual
+        +$3,44
+        Resumen de tus movimientos
+        Lo que entró a tu cuenta
+        +$250.000,00
+        Lo que salió de tu cuenta
+        -$100.000,00
+        Movimientos
+        01 sep Compra en UBER*RIDES con tarjeta débito
+        -$4.300,00
+        01 sep Reembolso realizado +$4.300,00
+        02 sep
+        Enviaste a PERSONA CON UN NOMBRE MUY LARGO
+        QUE SE PARTE EN DOS LINEAS
+        -$8.000,00
+        2 / 13
+        03 sep
+        Recibiste de Mengano
+        +$250.000,00
+        """
+        let e = StatementParser.parse(text: text, calendar: bogota, defaultYear: 2025)
+        XCTAssertEqual(e.map(\.amount), [4_300, 4_300, 8_000, 250_000])
+        XCTAssertEqual(e.map(\.kind), [.gasto, .ingreso, .gasto, .ingreso])
+        XCTAssertEqual(e[2].description, "Enviaste a PERSONA CON UN NOMBRE MUY LARGO QUE SE PARTE EN DOS LINEAS")
+        XCTAssertEqual(e[0].date, fecha(2026, 9, 1))
+    }
+
+    func testDeclaredTotalsAndCheck() {
+        let totals = StatementParser.declaredTotals(in: "Resumen
+Lo que entró a tu cuenta
++$250.000,00
+Lo que salió de tu cuenta
+-$400.000,50
+")
+        XCTAssertEqual(totals, StatementTotals(income: 250_000, outflow: 400_000))
+        XCTAssertEqual(StatementParser.declaredTotals(in: "nada"), StatementTotals(income: nil, outflow: nil))
+
+        let entries = [
+            StatementEntry(date: fecha(2026, 9, 1), description: "a", amount: 250_000, kind: .ingreso, balance: nil),
+            StatementEntry(date: fecha(2026, 9, 2), description: "b", amount: 99_999, kind: .gasto, balance: nil),
+            StatementEntry(date: fecha(2026, 9, 3), description: "c", amount: 1, kind: .transferencia, balance: nil)
+        ]
+        let ok = StatementReconciler.check(entries: entries, against: StatementTotals(income: 250_000, outflow: 100_000))
+        XCTAssertEqual(ok, TotalsCheck(incomeMatches: true, outflowMatches: true, readIncome: 250_000, readOutflow: 100_000))
+        let bad = StatementReconciler.check(entries: entries, against: StatementTotals(income: 250_000, outflow: 150_000))
+        XCTAssertEqual(bad.outflowMatches, false)
+        XCTAssertNil(StatementReconciler.check(entries: entries, against: StatementTotals(income: nil, outflow: nil)).incomeMatches)
+    }
+
+    func testJapaneseCalendarPhoneStillGetsGregorianDates() {
+        // Un teléfono con calendario japonés no debe convertir 2026 en el año 2026 de la era Reiwa.
+        var japanese = Calendar(identifier: .japanese)
+        japanese.timeZone = TimeZone(identifier: "America/Bogota")!
+        let e = StatementParser.parse(text: "01 sep Compra en X -$4.300,00", calendar: japanese, defaultYear: 2026)
+        XCTAssertEqual(e.count, 1)
+        XCTAssertEqual(bogota.component(.year, from: e[0].date), 2026)
+    }
+
     // MARK: conciliación
     func testDuplicateDetection() {
         let cuenta = UUID()
