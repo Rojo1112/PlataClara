@@ -39,8 +39,10 @@ public enum Stats {
 
     public static func summary(movements: [MovementSnapshot], in interval: DateInterval, pendingFixed: Int) -> MonthSummary {
         let ms = confirmed(movements, in: interval)
-        let income = ms.filter { $0.kind == .ingreso }.reduce(0) { $0 + $1.amount }
-        let expenses = ms.filter { $0.kind == .gasto }.reduce(0) { $0 + $1.amount }
+        let income = ms.filter { $0.kind == .ingreso && !$0.isRefund }.reduce(0) { $0 + $1.amount }
+        let refunds = ms.filter { $0.kind == .ingreso && $0.isRefund }.reduce(0) { $0 + $1.amount }
+        let spent = ms.filter { $0.kind == .gasto }.reduce(0) { $0 + $1.amount }
+        let expenses = max(0, spent - refunds)
         return MonthSummary(income: income, expenses: expenses, pendingFixed: pendingFixed)
     }
 

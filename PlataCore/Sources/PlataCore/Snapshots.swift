@@ -22,10 +22,12 @@ public struct MovementSnapshot: Equatable, Sendable {
     public let destinationAccountID: UUID?
     public let categoryName: String?
     public let status: MovementStatus
+    /// Ingreso que es la devolución de un gasto: resta del gasto en las estadísticas.
+    public let isRefund: Bool
 
     public init(id: UUID = UUID(), amount: Int, date: Date, kind: MovementKind, method: PaymentMethod,
                 accountID: UUID?, destinationAccountID: UUID? = nil, categoryName: String? = nil,
-                status: MovementStatus = .confirmado) {
+                status: MovementStatus = .confirmado, isRefund: Bool = false) {
         self.id = id
         self.amount = amount
         self.date = date
@@ -35,5 +37,6 @@ public struct MovementSnapshot: Equatable, Sendable {
         self.destinationAccountID = destinationAccountID
         self.categoryName = categoryName
         self.status = status
+        self.isRefund = isRefund
     }
 }
