@@ -40,7 +40,7 @@ enum CaptureService {
                      date: date, context: context)
     }
 
-    private static func store(parsed: ParsedMovement?, accountID: UUID?, rawText: String, source: CaptureSource,
+    static func store(parsed: ParsedMovement?, accountID: UUID?, rawText: String, source: CaptureSource,
                               date: Date, context: ModelContext) -> CaptureOutcome {
         let since = date.addingTimeInterval(-86_400)
         let recentMovements = (try? context.fetch(FetchDescriptor<Movement>(predicate: #Predicate { $0.date >= since }))) ?? []

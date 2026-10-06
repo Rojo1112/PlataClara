@@ -1,10 +1,57 @@
 import SwiftUI
+import SwiftData
+import AppIntents
+import PlataCore
 
 struct ShortcutsGuideView: View {
+    @Query(sort: \Account.createdAt) private var accounts: [Account]
+
     var body: some View {
         List {
             Section {
                 Text("iOS no deja que ninguna app lea las notificaciones de otras apps. PlataClara registra tus movimientos con automatizaciones de Atajos: correo del banco, Apple Pay y capturas de pantalla.")
+            }
+            Section {
+                ForEach(Self.readyShortcuts, id: \.title) { item in
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.title)
+                            Text("Dile a Siri: «\(item.phrase)»").font(.caption).foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: item.icon)
+                    }
+                }
+                ShortcutsLink()
+                    .shortcutsLinkStyle(.automaticOutline)
+            } header: {
+                Text("Atajos que ya tienes")
+            } footer: {
+                Text("Se instalaron solos con la app: aparecen en Atajos, en Siri y en Spotlight, sin crear nada. Toca el botón para verlos y ponerlos en el botón de acción o en la pantalla de bloqueo.")
+            }
+            Section {
+                if accounts.isEmpty {
+                    Text("Agrega primero tus cuentas en Ajustes › Cuentas.").foregroundStyle(.secondary)
+                }
+                ForEach(accounts) { account in
+                    let trimmed = (account.walletCardName ?? "").trimmingCharacters(in: .whitespaces)
+                    let probe = ApplePayInput.parse(amount: "$1.000,00", merchant: "Prueba", cardName: trimmed, hints: accounts.map(\.hint))
+                    let matched = !trimmed.isEmpty && probe?.accountID == account.id
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(account.name)
+                            Text(trimmed.isEmpty ? "Falta el nombre de la tarjeta en Wallet" : "Wallet: «\(trimmed)»")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: matched ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                            .foregroundStyle(matched ? Color.green : Color.orange)
+                    }
+                }
+            } header: {
+                Text("Revisar Apple Pay")
+            } footer: {
+                Text("Apple Pay solo se registra solo si existe la automatización «Transacción» (paso 1 de abajo) y el nombre de la tarjeta en la cuenta es igual al de Wallet. Aquí ves cuáles cuentas ya están listas, sin registrar nada.")
             }
             Section("1. Pagos con Apple Pay") {
                 step("Atajos › Automatización › Nueva automatización › Transacción.")
@@ -37,4 +84,15 @@ struct ShortcutsGuideView: View {
     private func step(_ text: String) -> some View {
         Text(text).font(.callout)
     }
+}
+
+private extension ShortcutsGuideView {
+    static let readyShortcuts: [(title: String, phrase: String, icon: String)] = [
+        ("Registrar gasto", "Registrar gasto en PlataClara", "minus.circle"),
+        ("Registrar ingreso", "Registrar ingreso en PlataClara", "plus.circle"),
+        ("Cuánto me sobra", "¿Cuánto me sobra en PlataClara?", "chart.pie"),
+        ("Nuevo movimiento", "Nuevo movimiento en PlataClara", "square.and.pencil"),
+        ("Registrar aviso", "Registrar aviso en PlataClara", "text.viewfinder"),
+        ("Respaldar ahora", "Respaldar PlataClara", "externaldrive"),
+    ]
 }

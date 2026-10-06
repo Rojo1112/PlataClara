@@ -17,6 +17,7 @@ struct StatementImportView: View {
     @State private var declared = StatementTotals(income: nil, outflow: nil)
     @State private var entries: [StatementEntry] = []
     @State private var duplicates: Set<Int> = []
+    @State private var matches: [Int: UUID] = [:]
     @State private var selected: Set<Int> = []
     @State private var document: PDFDocument?
     @State private var needsPassword = false
@@ -267,9 +268,8 @@ struct StatementImportView: View {
             declared = StatementParser.declaredTotals(in: text)
         }
         let snapshots = movements.map { $0.snapshot(categoryName: nil) }
-        duplicates = Set(entries.indices.filter {
-            StatementReconciler.isDuplicate(entries[$0], accountID: accountID, existing: snapshots, calendar: calendar)
-        })
+        matches = StatementReconciler.match(entries, accountID: accountID, existing: snapshots, calendar: calendar)
+        duplicates = Set(matches.keys)
         selected = Set(entries.indices).subtracting(duplicates)
         if entries.isEmpty && announceEmpty {
             message = "No encontré movimientos. Cada uno debe tener fecha, descripción y monto. Descarga el extracto desde la app del banco (PDF, CSV o TXT) y vuelve a intentarlo."
@@ -295,12 +295,31 @@ struct StatementImportView: View {
             context.insert(movement)
             created.append(movement)
         }
+        // Lo que ya estaba registrado (Apple Pay, aviso, otra captura) no se duplica: se completa con los datos del banco.
+        var completed = 0
+        for (index, id) in matches where !selected.contains(index) {
+            guard let existing = movements.first(where: { $0.id == id }) else { continue }
+            let entry = entries[index]
+            var changed = false
+            if existing.merchant == nil, !entry.description.isEmpty { existing.merchant = entry.description; changed = true }
+            if existing.accountID == nil { existing.accountID = account.id; changed = true }
+            if entry.hasTime, existing.date != entry.date { existing.date = entry.date; changed = true }
+            if existing.status != .confirmado {
+                existing.status = .confirmado
+                changed = true
+                created.append(existing)
+            }
+            if changed { completed += 1 }
+        }
         try? context.save()
         created.forEach { MovementStore.didConfirm($0, context: context) }
-        message = "Importados \(created.count) movimientos."
+        let alreadyThere = matches.count
+        message = "Importados \(selected.count) movimientos nuevos."
+            + (alreadyThere > 0 ? " \(alreadyThere) ya estaban registrados y no se repitieron" + (completed > 0 ? " (\(completed) se completaron con los datos del banco)." : ".") : "")
         entries = []
         selected = []
         duplicates = []
+        matches = [:]
         rawText = ""
     }
 }

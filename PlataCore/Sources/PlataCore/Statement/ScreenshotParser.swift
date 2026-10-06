@@ -34,9 +34,9 @@ public enum ScreenshotParser {
             guard !description.isEmpty else { return }
             // Sin hora propia ni encabezado de día es una fila cortada al borde de la captura: se descarta.
             guard date != nil || day != nil else { return }
-            let when = date ?? day.flatMap { calendar.date(byAdding: .hour, value: 12, to: $0) } ?? now
+            let when = date ?? day ?? calendar.startOfDay(for: now)
             entries.append(StatementEntry(date: when, description: description, amount: amountValue,
-                                          kind: kind(of: description, sign: sign), balance: nil))
+                                          kind: kind(of: description, sign: sign), balance: nil, hasTime: date != nil))
         }
 
         for raw in text.components(separatedBy: .newlines) {

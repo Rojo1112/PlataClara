@@ -6,13 +6,16 @@ public struct StatementEntry: Equatable, Sendable {
     public let amount: Int
     public let kind: MovementKind
     public let balance: Int?
+    /// true si el renglón trae hora real (capturas); si solo trae el día, vale 00:00 y se compara por día.
+    public let hasTime: Bool
 
-    public init(date: Date, description: String, amount: Int, kind: MovementKind, balance: Int?) {
+    public init(date: Date, description: String, amount: Int, kind: MovementKind, balance: Int?, hasTime: Bool = false) {
         self.date = date
         self.description = description
         self.amount = amount
         self.kind = kind
         self.balance = balance
+        self.hasTime = hasTime
     }
 }
 
