@@ -4,6 +4,7 @@ import AppIntents
 import PlataCore
 
 struct ShortcutsGuideView: View {
+    @Environment(\.openURL) private var openURL
     @Query(sort: \Account.createdAt) private var accounts: [Account]
 
     var body: some View {
@@ -13,13 +14,19 @@ struct ShortcutsGuideView: View {
             }
             Section {
                 ForEach(Self.readyShortcuts, id: \.title) { item in
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.title)
-                            Text("Dile a Siri: «\(item.phrase)»").font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title)
+                                Text("Dile a Siri: «\(item.phrase)»").font(.caption).foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: item.icon)
                         }
-                    } icon: {
-                        Image(systemName: item.icon)
+                        Spacer()
+                        Button("Agregar") { openShortcuts() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
                     }
                 }
                 ShortcutsLink()
@@ -27,7 +34,7 @@ struct ShortcutsGuideView: View {
             } header: {
                 Text("Atajos que ya tienes")
             } footer: {
-                Text("Se instalaron solos con la app: aparecen en Atajos, en Siri y en Spotlight, sin crear nada. Toca el botón para verlos y ponerlos en el botón de acción o en la pantalla de bloqueo.")
+                Text("Estos atajos ya vienen dentro de la app: aparecen solos en Atajos, en Siri y en Spotlight. «Agregar» abre Atajos para que los pongas en el botón de acción, en la pantalla de bloqueo o en la pantalla de inicio. Lo que registren no se duplica si después subes una captura o un extracto: se completa con los datos del banco.")
             }
             Section {
                 if accounts.isEmpty {
@@ -88,6 +95,10 @@ struct ShortcutsGuideView: View {
 
 private extension ShortcutsGuideView {
     static let readyShortcuts: [(title: String, phrase: String, icon: String)] = [
+        ("Pago con tarjeta", "Registrar pago con tarjeta en PlataClara", "creditcard"),
+        ("Pago con QR", "Registrar pago con QR en PlataClara", "qrcode"),
+        ("Envío a otra cuenta", "Registrar envío en PlataClara", "arrow.up.right.circle"),
+        ("Entrada de otra cuenta", "Registrar entrada en PlataClara", "arrow.down.left.circle"),
         ("Registrar gasto", "Registrar gasto en PlataClara", "minus.circle"),
         ("Registrar ingreso", "Registrar ingreso en PlataClara", "plus.circle"),
         ("Cuánto me sobra", "¿Cuánto me sobra en PlataClara?", "chart.pie"),
@@ -95,4 +106,8 @@ private extension ShortcutsGuideView {
         ("Registrar aviso", "Registrar aviso en PlataClara", "text.viewfinder"),
         ("Respaldar ahora", "Respaldar PlataClara", "externaldrive"),
     ]
+
+    func openShortcuts() {
+        if let url = URL(string: "shortcuts://") { openURL(url) }
+    }
 }

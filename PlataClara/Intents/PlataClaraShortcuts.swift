@@ -1,8 +1,21 @@
 import AppIntents
 
 /// Estos atajos aparecen automáticamente en la app Atajos, en Siri y en Spotlight; no hay que crearlos a mano.
+/// iOS permite como máximo 10 en total.
 struct PlataClaraShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(intent: CardPaymentIntent(),
+                    phrases: ["Registrar pago con tarjeta en \(.applicationName)", "Pagué con tarjeta en \(.applicationName)"],
+                    shortTitle: "Pago con tarjeta", systemImageName: "creditcard")
+        AppShortcut(intent: QRPaymentIntent(),
+                    phrases: ["Registrar pago con QR en \(.applicationName)", "Pagué con QR en \(.applicationName)"],
+                    shortTitle: "Pago con QR", systemImageName: "qrcode")
+        AppShortcut(intent: SendMoneyIntent(),
+                    phrases: ["Registrar envío en \(.applicationName)", "Envié plata en \(.applicationName)"],
+                    shortTitle: "Envío a otra cuenta", systemImageName: "arrow.up.right.circle")
+        AppShortcut(intent: ReceiveMoneyIntent(),
+                    phrases: ["Registrar entrada en \(.applicationName)", "Me llegó plata en \(.applicationName)"],
+                    shortTitle: "Entrada de otra cuenta", systemImageName: "arrow.down.left.circle")
         AppShortcut(intent: QuickExpenseIntent(),
                     phrases: ["Registrar gasto en \(.applicationName)", "Anotar un gasto en \(.applicationName)"],
                     shortTitle: "Registrar gasto", systemImageName: "minus.circle")

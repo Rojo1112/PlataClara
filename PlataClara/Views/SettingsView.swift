@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var importing = false
     @State private var pendingRestore: URL?
     @State private var message: String?
+    @State private var showTutorial = false
 
     var body: some View {
         List {
@@ -19,6 +20,7 @@ struct SettingsView: View {
             }
             Section("Registro automático") {
                 NavigationLink("Configurar Atajos") { ShortcutsGuideView() }
+                Button("Ver el tutorial de nuevo") { showTutorial = true }
             }
             BackupFolderSection()
             Section {
@@ -41,6 +43,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Ajustes")
+        .sheet(isPresented: $showTutorial) { OnboardingView() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             switch result {
             case .success(let url): pendingRestore = url

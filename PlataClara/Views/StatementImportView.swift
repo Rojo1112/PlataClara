@@ -18,6 +18,9 @@ struct StatementImportView: View {
     @State private var entries: [StatementEntry] = []
     @State private var duplicates: Set<Int> = []
     @State private var matches: [Int: UUID] = [:]
+    @State private var kindOverride: [Int: MovementKind] = [:]
+    @State private var categoryOverride: [Int: UUID] = [:]
+    @Query(sort: \Category.sortOrder) private var categories: [Category]
     @State private var selected: Set<Int> = []
     @State private var document: PDFDocument?
     @State private var needsPassword = false
@@ -109,26 +112,26 @@ struct StatementImportView: View {
                          : "Solo se cuentan los movimientos marcados.")
                 }
 
-                Section("Movimientos encontrados (\(selected.count) de \(entries.count) seleccionados)") {
-                    ForEach(entries.indices, id: \.self) { index in
-                        Toggle(isOn: Binding(get: { selected.contains(index) },
-                                             set: { on in if on { selected.insert(index) } else { selected.remove(index) } })) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(entries[index].description.isEmpty ? "(sin descripción)" : entries[index].description).lineLimit(2)
-                                    Text("\(Fecha.dia(entries[index].date)) · \(entries[index].kind.displayName)\(duplicates.contains(index) ? " · ya registrado" : "")")
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text((entries[index].kind == .ingreso ? "+" : "-") + Money.format(entries[index].amount))
-                                    .monospacedDigit()
-                            }
-                        }
-                    }
-                }
                 Section {
                     Button("Importar \(selected.count) movimientos", action: importSelected)
                         .disabled(selected.isEmpty)
+                    Menu {
+                        Button("Solo lo nuevo") { selected = Set(entries.indices).subtracting(duplicates) }
+                        Button("Todos") { selected = Set(entries.indices) }
+                        Button("Ninguno") { selected = [] }
+                    } label: {
+                        Label("Qué seleccionar", systemImage: "checklist")
+                    }
+                } footer: {
+                    if !duplicates.isEmpty {
+                        Text("\(duplicates.count) ya estaban registrados: no se repiten, solo se completan con los datos del banco.")
+                    }
+                }
+
+                Section("Movimientos encontrados (\(selected.count) de \(entries.count) seleccionados)") {
+                    ForEach(entries.indices, id: \.self) { index in
+                        row(index)
+                    }
                 }
             }
         }
@@ -142,15 +145,65 @@ struct StatementImportView: View {
         }
     }
 
+    /// Tipo final del renglón: el que lee la app o el que cambió el usuario en el menú.
+    private func kind(_ index: Int) -> MovementKind { kindOverride[index] ?? entries[index].kind }
+
     private func total(of kind: MovementKind) -> Int {
-        selected.reduce(0) { $0 + (entries[$1].kind == kind ? entries[$1].amount : 0) }
+        selected.reduce(0) { $0 + (self.kind($1) == kind ? entries[$1].amount : 0) }
     }
 
     private func selectedIncome(refunds: Bool) -> Int {
         selected.reduce(0) { sum, index in
             let entry = entries[index]
-            guard entry.kind == .ingreso, MovementClassifier.isRefund(entry.description) == refunds else { return sum }
+            guard kind(index) == .ingreso, MovementClassifier.isRefund(entry.description) == refunds else { return sum }
             return sum + entry.amount
+        }
+    }
+
+    /// Categoría elegida en el menú o, si no, la que se adivina por la descripción.
+    private func categoryName(_ index: Int) -> String? {
+        if let id = categoryOverride[index] { return categories.first { $0.id == id }?.name }
+        return kind(index) == .gasto ? AutoCategory.guess(entries[index].description) : nil
+    }
+
+    @ViewBuilder
+    private func row(_ index: Int) -> some View {
+        let entry = entries[index]
+        let isOn = selected.contains(index)
+        HStack(spacing: 12) {
+            Button {
+                if isOn { selected.remove(index) } else { selected.insert(index) }
+            } label: {
+                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isOn ? Color.accentColor : Color.secondary)
+            }
+            .buttonStyle(.plain)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.description.isEmpty ? "(sin descripción)" : entry.description).lineLimit(2)
+                Text([Fecha.dia(entry.date), kind(index).displayName, categoryName(index),
+                      duplicates.contains(index) ? "ya registrado" : nil].compactMap { $0 }.joined(separator: " · "))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text((kind(index) == .ingreso ? "+" : "-") + Money.format(entry.amount)).monospacedDigit()
+            Menu {
+                Button(isOn ? "Ignorar este movimiento" : "Importar este movimiento",
+                       systemImage: isOn ? "minus.circle" : "plus.circle") {
+                    if isOn { selected.remove(index) } else { selected.insert(index) }
+                }
+                Picker("Tipo", selection: Binding(get: { kind(index) }, set: { kindOverride[index] = $0 })) {
+                    ForEach(MovementKind.allCases) { Text($0.displayName).tag($0) }
+                }
+                Menu("Categoría") {
+                    Button("Automática") { categoryOverride[index] = nil }
+                    ForEach(categories.filter { $0.isIncome == (kind(index) == .ingreso) }) { category in
+                        Button(category.name, systemImage: category.icon) { categoryOverride[index] = category.id }
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle").font(.title3)
+            }
         }
     }
 
@@ -270,6 +323,8 @@ struct StatementImportView: View {
         let snapshots = movements.map { $0.snapshot(categoryName: nil) }
         matches = StatementReconciler.match(entries, accountID: accountID, existing: snapshots, calendar: calendar)
         duplicates = Set(matches.keys)
+        kindOverride = [:]
+        categoryOverride = [:]
         selected = Set(entries.indices).subtracting(duplicates)
         if entries.isEmpty && announceEmpty {
             message = "No encontré movimientos. Cada uno debe tener fecha, descripción y monto. Descarga el extracto desde la app del banco (PDF, CSV o TXT) y vuelve a intentarlo."
@@ -281,17 +336,30 @@ struct StatementImportView: View {
         // Un «pago a tu tarjeta» va a la tarjeta de crédito del mismo banco, si es la única.
         let cards = accounts.filter { $0.kind == .credito && $0.bank == account.bank && $0.id != account.id }
         var created: [Movement] = []
+        var knownCategories = categories
         for index in selected.sorted() {
             let entry = entries[index]
+            let finalKind = kind(index)
             let method: PaymentMethod
-            switch entry.kind {
+            switch finalKind {
             case .ingreso, .transferencia: method = .transferencia
             case .gasto: method = account.kind == .credito ? .credito : .debito
             }
-            let movement = Movement(amount: entry.amount, date: entry.date, kind: entry.kind, method: method,
+            let movement = Movement(amount: entry.amount, date: entry.date, kind: finalKind, method: method,
                                     accountID: account.id, source: .extracto, status: .confirmado)
             movement.merchant = entry.description.isEmpty ? nil : entry.description
-            if entry.kind == .transferencia, cards.count == 1 { movement.destinationAccountID = cards[0].id }
+            if finalKind == .transferencia, cards.count == 1 { movement.destinationAccountID = cards[0].id }
+            if let name = categoryName(index) {
+                if let known = knownCategories.first(where: { $0.name == name }) {
+                    movement.categoryID = known.id
+                } else {
+                    let new = Category(name: name, icon: "tag", colorHex: "#757575", isIncome: finalKind == .ingreso,
+                                       sortOrder: knownCategories.count)
+                    context.insert(new)
+                    knownCategories.append(new)
+                    movement.categoryID = new.id
+                }
+            }
             context.insert(movement)
             created.append(movement)
         }
@@ -320,6 +388,8 @@ struct StatementImportView: View {
         selected = []
         duplicates = []
         matches = [:]
+        kindOverride = [:]
+        categoryOverride = [:]
         rawText = ""
     }
 }

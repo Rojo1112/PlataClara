@@ -35,21 +35,52 @@ struct AccountFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Cuenta") {
+                if account == nil {
+                    Section {
+                        Menu {
+                            ForEach(Self.templates, id: \.name) { template in
+                                Button(template.name) { apply(template) }
+                            }
+                        } label: {
+                            Label("Elegir una plantilla…", systemImage: "wand.and.stars")
+                        }
+                    } header: {
+                        Text("Empezar rápido")
+                    } footer: {
+                        Text("Llena el banco y el tipo por ti. Después solo pones el saldo.")
+                    }
+                }
+                Section {
                     TextField("Nombre (ej. Nu ahorros)", text: $name)
                     Picker("Banco", selection: $bank) {
                         ForEach(Bank.allCases) { Text($0.displayName).tag($0) }
                     }
+                    .pickerStyle(.menu)
                     Picker("Tipo", selection: $kind) {
                         ForEach(AccountKind.allCases) { Text($0.displayName).tag($0) }
                     }
+                    .pickerStyle(.menu)
                     AmountField(title: kind == .credito ? "Deuda actual" : "Saldo actual", value: $openingBalance)
+                } header: {
+                    Text("Cuenta")
+                } footer: {
+                    if account == nil {
+                        Text(kind == .credito
+                             ? "Pon lo que debes hoy en la tarjeta, no el cupo."
+                             : "Pon lo que tienes hoy en la cuenta. Si vas a importar el extracto de un mes completo, pon el saldo con el que empezó ese mes (lo dice el extracto).")
+                    }
                 }
                 if kind == .credito {
                     Section("Tarjeta de crédito") {
                         AmountField(title: "Cupo", value: $creditLimit)
-                        Stepper("Día de corte: \(cutoffDay)", value: $cutoffDay, in: 1...31)
-                        Stepper("Día de pago: \(paymentDay)", value: $paymentDay, in: 1...31)
+                        Picker("Día de corte", selection: $cutoffDay) {
+                            ForEach(1...31, id: \.self) { Text("\($0)").tag($0) }
+                        }
+                        .pickerStyle(.menu)
+                        Picker("Día de pago", selection: $paymentDay) {
+                            ForEach(1...31, id: \.self) { Text("\($0)").tag($0) }
+                        }
+                        .pickerStyle(.menu)
                     }
                 }
                 Section {
@@ -62,7 +93,7 @@ struct AccountFormView: View {
                 } header: {
                     Text("Para el registro automático")
                 } footer: {
-                    Text("Sirven para saber a qué cuenta va cada aviso del banco o pago con Apple Pay.")
+                    Text("Sirven para saber a qué cuenta va cada aviso del banco o pago con Apple Pay. El nombre de Wallet es el que ves al tocar la tarjeta en la app Wallet; debe ser igual.")
                 }
             }
             .navigationTitle(account == nil ? "Nueva cuenta" : "Editar cuenta")
@@ -74,6 +105,21 @@ struct AccountFormView: View {
                 }
             }
         }
+    }
+
+    /// Combinaciones frecuentes para no escribir nombre, banco y tipo a mano.
+    static let templates: [(name: String, bank: Bank, kind: AccountKind)] = [
+        ("Nu · Cuenta de ahorros", .nu, .ahorros), ("Nu · Tarjeta de crédito", .nu, .credito),
+        ("Dale! · Cuenta de ahorros", .dale, .ahorros),
+        ("Ualá · Cuenta de ahorros", .uala, .ahorros), ("Ualá · Tarjeta de crédito", .uala, .credito),
+        ("Lulo Bank · Cuenta de ahorros", .lulo, .ahorros), ("Lulo Bank · Tarjeta de crédito", .lulo, .credito),
+        ("Efectivo", .efectivo, .ahorros),
+    ]
+
+    private func apply(_ template: (name: String, bank: Bank, kind: AccountKind)) {
+        name = template.name.replacingOccurrences(of: " · ", with: " ")
+        bank = template.bank
+        kind = template.kind
     }
 
     private func save() {

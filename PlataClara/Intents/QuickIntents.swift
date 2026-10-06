@@ -3,18 +3,34 @@ import SwiftData
 import PlataCore
 
 /// Atajos que aparecen solos en la app Atajos, en Siri y en Spotlight apenas se instala PlataClara.
-private enum QuickKind {
+/// Pasan por el mismo camino que los avisos y Apple Pay: si después subes una captura o un extracto con el mismo
+/// movimiento, no se duplica; se completa con los datos del banco.
+enum QuickRegister {
     @MainActor
-    static func register(kind: MovementKind, amount: Int, merchant: String?) -> String {
+    static func run(kind: MovementKind, method: PaymentMethod, amount: Int, merchant: String?, accountName: String?) -> String {
         guard amount > 0 else { return "El monto debe ser mayor que cero." }
         let context = Persistence.container.mainContext
         let name = merchant?.trimmingCharacters(in: .whitespaces)
-        let parsed = ParsedMovement(amount: amount, kind: kind, method: kind == .gasto ? .debito : .transferencia,
-                                    merchant: (name?.isEmpty ?? true) ? nil : name, bank: nil, last4: nil, isExplicit: true)
-        let outcome = CaptureService.store(parsed: parsed, accountID: nil, rawText: "Atajo · \(kind.displayName) \(amount)",
-                                           source: .manual, date: .now, context: context)
+        let account = resolve(accountName, in: context)
+        let finalMethod: PaymentMethod = (kind == .gasto && method == .debito && account?.kind == .credito) ? .credito : method
+        let parsed = ParsedMovement(amount: amount, kind: kind, method: finalMethod,
+                                    merchant: (name?.isEmpty ?? true) ? nil : name, bank: account?.bank, last4: nil, isExplicit: true)
+        let outcome = CaptureService.store(parsed: parsed, accountID: account?.id,
+                                           rawText: "Atajo · \(kind.displayName) \(amount)", source: .manual,
+                                           date: .now, context: context)
         BackupFolderService.autoBackup(context: context)
         return outcome.message
+    }
+
+    /// Busca la cuenta por parte de su nombre («nu», «lulo»…). Si no dice cuál o hay duda, queda sin cuenta
+    /// y el extracto la completa después.
+    @MainActor
+    private static func resolve(_ text: String?, in context: ModelContext) -> Account? {
+        let wanted = TextNormalizer.fold(text ?? "").trimmingCharacters(in: .whitespaces)
+        let accounts = context.all(Account.self)
+        guard !wanted.isEmpty else { return accounts.count == 1 ? accounts[0] : nil }
+        let found = accounts.filter { TextNormalizer.fold($0.name).contains(wanted) }
+        return found.count == 1 ? found[0] : nil
     }
 }
 
@@ -24,11 +40,12 @@ struct QuickExpenseIntent: AppIntent {
 
     @Parameter(title: "Monto (COP)") var amount: Int
     @Parameter(title: "Comercio o motivo") var merchant: String?
+    @Parameter(title: "Cuenta") var account: String?
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let message = QuickKind.register(kind: .gasto, amount: amount, merchant: merchant)
-        return .result(dialog: IntentDialog(stringLiteral: message))
+        let text = QuickRegister.run(kind: .gasto, method: .debito, amount: amount, merchant: merchant, accountName: account)
+        return .result(dialog: IntentDialog(stringLiteral: text))
     }
 }
 
@@ -38,11 +55,72 @@ struct QuickIncomeIntent: AppIntent {
 
     @Parameter(title: "Monto (COP)") var amount: Int
     @Parameter(title: "De quién o por qué") var merchant: String?
+    @Parameter(title: "Cuenta") var account: String?
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let message = QuickKind.register(kind: .ingreso, amount: amount, merchant: merchant)
-        return .result(dialog: IntentDialog(stringLiteral: message))
+        let text = QuickRegister.run(kind: .ingreso, method: .transferencia, amount: amount, merchant: merchant, accountName: account)
+        return .result(dialog: IntentDialog(stringLiteral: text))
+    }
+}
+
+struct CardPaymentIntent: AppIntent {
+    static var title: LocalizedStringResource = "Registrar pago con tarjeta"
+    static var description = IntentDescription("Registra una compra con tarjeta débito o crédito.")
+
+    @Parameter(title: "Monto (COP)") var amount: Int
+    @Parameter(title: "Comercio") var merchant: String?
+    @Parameter(title: "Cuenta o tarjeta") var account: String?
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let text = QuickRegister.run(kind: .gasto, method: .debito, amount: amount, merchant: merchant, accountName: account)
+        return .result(dialog: IntentDialog(stringLiteral: text))
+    }
+}
+
+struct QRPaymentIntent: AppIntent {
+    static var title: LocalizedStringResource = "Registrar pago con QR"
+    static var description = IntentDescription("Registra un pago hecho escaneando un código QR.")
+
+    @Parameter(title: "Monto (COP)") var amount: Int
+    @Parameter(title: "Comercio") var merchant: String?
+    @Parameter(title: "Cuenta") var account: String?
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let text = QuickRegister.run(kind: .gasto, method: .qr, amount: amount, merchant: merchant, accountName: account)
+        return .result(dialog: IntentDialog(stringLiteral: text))
+    }
+}
+
+struct SendMoneyIntent: AppIntent {
+    static var title: LocalizedStringResource = "Registrar envío a otra cuenta"
+    static var description = IntentDescription("Registra una plata que enviaste por llave Bre-B o transferencia.")
+
+    @Parameter(title: "Monto (COP)") var amount: Int
+    @Parameter(title: "A quién") var merchant: String?
+    @Parameter(title: "Desde qué cuenta") var account: String?
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let text = QuickRegister.run(kind: .gasto, method: .llave, amount: amount, merchant: merchant, accountName: account)
+        return .result(dialog: IntentDialog(stringLiteral: text))
+    }
+}
+
+struct ReceiveMoneyIntent: AppIntent {
+    static var title: LocalizedStringResource = "Registrar entrada de otra cuenta"
+    static var description = IntentDescription("Registra plata que te llegó de otra cuenta por llave Bre-B o transferencia.")
+
+    @Parameter(title: "Monto (COP)") var amount: Int
+    @Parameter(title: "De quién") var merchant: String?
+    @Parameter(title: "A qué cuenta") var account: String?
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let text = QuickRegister.run(kind: .ingreso, method: .llave, amount: amount, merchant: merchant, accountName: account)
+        return .result(dialog: IntentDialog(stringLiteral: text))
     }
 }
 
