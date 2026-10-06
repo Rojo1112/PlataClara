@@ -80,7 +80,7 @@ struct StatementImportView: View {
 
             if document != nil, !needsPassword, !readingImage, !entries.isEmpty, !usedOCR {
                 Section {
-                    Button("¿No coinciden los totales? Releer como imagen (OCR)", action: readImage)
+                    Button("¿No coinciden los totales? Releer como imagen (OCR)") { readImage() }
                 }
             }
 
@@ -269,23 +269,49 @@ struct StatementImportView: View {
         }
     }
 
-    /// Texto incrustado primero; si no aparece ningún movimiento, se lee la imagen de las páginas.
+    /// Texto incrustado primero. Si no aparece ningún movimiento, o lo leído no cuadra con los totales que dice el
+    /// propio PDF, se lee también la imagen de las páginas y se queda la lectura que más se acerque a esos totales.
     private func read(_ pdf: PDFDocument) {
-        process(text: StatementTextExtractor.embeddedText(of: pdf), announceEmpty: false)
-        guard entries.isEmpty else { return }
-        readImage()
+        let embedded = StatementTextExtractor.embeddedText(of: pdf)
+        process(text: embedded, announceEmpty: false)
+        let doesNotMatch = totalsCheck.map { $0.incomeMatches == false || $0.outflowMatches == false } ?? false
+        guard entries.isEmpty || doesNotMatch else { return }
+        readImage(comparingWith: embedded)
     }
 
-    /// Dibuja cada página y la lee con OCR: sirve cuando el PDF no deja copiar el texto o es una imagen.
-    private func readImage() {
+    /// Dibuja cada página y la lee con OCR: sirve cuando el PDF no deja copiar el texto, es una imagen o el texto
+    /// incrustado sale incompleto. Con `embedded` solo reemplaza la primera lectura si queda más cerca de los totales.
+    private func readImage(comparingWith embedded: String? = nil) {
         guard let pdf = document, !readingImage else { return }
         readingImage = true
         Task {
             let text = await StatementTextExtractor.ocrText(of: pdf)
             readingImage = false
+            if let embedded, !isBetter(text, than: embedded) {
+                process(text: embedded, announceEmpty: true)
+                return
+            }
             usedOCR = true
             process(text: text, announceEmpty: true)
         }
+    }
+
+    /// Cuánto se aleja lo leído de los totales del PDF (0 = cuadra). Sin totales, gana quien encuentre más movimientos.
+    private func gap(_ text: String, declared: StatementTotals) -> Int {
+        let calendar = Calendar.gregoriano
+        let found = StatementParser.parse(text: text, calendar: calendar, defaultYear: calendar.component(.year, from: .now))
+        guard declared.income != nil || declared.outflow != nil else { return -found.count }
+        let check = StatementReconciler.check(entries: found, against: declared)
+        return abs(check.readIncome - (declared.income ?? check.readIncome))
+            + abs(check.readOutflow - (declared.outflow ?? check.readOutflow))
+    }
+
+    private func isBetter(_ ocr: String, than embedded: String) -> Bool {
+        let fromEmbedded = StatementParser.declaredTotals(in: embedded)
+        let fromOCR = StatementParser.declaredTotals(in: ocr)
+        let declared = StatementTotals(income: fromEmbedded.income ?? fromOCR.income,
+                                       outflow: fromEmbedded.outflow ?? fromOCR.outflow)
+        return gap(ocr, declared: declared) < gap(embedded, declared: declared)
     }
 
     /// Lee las capturas elegidas con OCR y arma la lista de movimientos.
