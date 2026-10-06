@@ -20,6 +20,8 @@ struct StatementImportView: View {
     @State private var matches: [Int: UUID] = [:]
     @State private var kindOverride: [Int: MovementKind] = [:]
     @State private var categoryOverride: [Int: UUID] = [:]
+    @State private var holdFlags: Set<Int> = []
+    @State private var thirdPartyFlags: Set<Int> = []
     @Query(sort: \Category.sortOrder) private var categories: [Category]
     @State private var selected: Set<Int> = []
     @State private var document: PDFDocument?
@@ -182,6 +184,8 @@ struct StatementImportView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.description.isEmpty ? "(sin descripción)" : entry.description).lineLimit(2)
                 Text([Fecha.dia(entry.date), kind(index).displayName, categoryName(index),
+                      holdFlags.contains(index) ? MovementTag.hold.title : nil,
+                      thirdPartyFlags.contains(index) ? MovementTag.thirdParty.title : nil,
                       duplicates.contains(index) ? "ya registrado" : nil].compactMap { $0 }.joined(separator: " · "))
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -195,6 +199,12 @@ struct StatementImportView: View {
                 Picker("Tipo", selection: Binding(get: { kind(index) }, set: { kindOverride[index] = $0 })) {
                     ForEach(MovementKind.allCases) { Text($0.displayName).tag($0) }
                 }
+                Toggle("Retención pendiente (reloj de Nu)", isOn: Binding(
+                    get: { holdFlags.contains(index) },
+                    set: { on in if on { holdFlags.insert(index) } else { holdFlags.remove(index) } }))
+                Toggle("Plata de un tercero", isOn: Binding(
+                    get: { thirdPartyFlags.contains(index) },
+                    set: { on in if on { thirdPartyFlags.insert(index) } else { thirdPartyFlags.remove(index) } }))
                 Menu("Categoría") {
                     Button("Automática") { categoryOverride[index] = nil }
                     ForEach(categories.filter { $0.isIncome == (kind(index) == .ingreso) }) { category in
@@ -351,6 +361,8 @@ struct StatementImportView: View {
         duplicates = Set(matches.keys)
         kindOverride = [:]
         categoryOverride = [:]
+        holdFlags = []
+        thirdPartyFlags = []
         selected = Set(entries.indices).subtracting(duplicates)
         if entries.isEmpty && announceEmpty {
             message = "No encontré movimientos. Cada uno debe tener fecha, descripción y monto. Descarga el extracto desde la app del banco (PDF, CSV o TXT) y vuelve a intentarlo."
@@ -375,6 +387,7 @@ struct StatementImportView: View {
                                     accountID: account.id, source: .extracto, status: .confirmado)
             movement.merchant = entry.description.isEmpty ? nil : entry.description
             if finalKind == .transferencia, cards.count == 1 { movement.destinationAccountID = cards[0].id }
+            movement.note = MovementTag.compose(text: "", hold: holdFlags.contains(index), thirdParty: thirdPartyFlags.contains(index))
             if let name = categoryName(index) {
                 if let known = knownCategories.first(where: { $0.name == name }) {
                     movement.categoryID = known.id
@@ -416,6 +429,8 @@ struct StatementImportView: View {
         matches = [:]
         kindOverride = [:]
         categoryOverride = [:]
+        holdFlags = []
+        thirdPartyFlags = []
         rawText = ""
     }
 }

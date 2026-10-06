@@ -46,10 +46,10 @@ struct HomeView: View {
                 Section("Este mes") {
                     if summary.totalIn > 0 || summary.totalOut > 0 {
                         Label(summary.overspent
-                              ? "Gastaste \(Money.format(summary.deficit)) más de lo que te entró"
+                              ? "Este mes salió \(Money.format(summary.deficit)) más de lo que entró"
                               : "Te sobran \(Money.format(summary.saved)) de lo que te entró",
-                              systemImage: summary.overspent ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
-                            .foregroundStyle(summary.overspent ? Color.red : Color.green)
+                              systemImage: summary.overspent ? "exclamationmark.circle.fill" : "checkmark.seal.fill")
+                            .foregroundStyle(summary.overspent ? Color.orange : Color.green)
                             .font(.subheadline.weight(.semibold))
                     }
                     metric("Te entró", summary.totalIn, .green)

@@ -119,3 +119,30 @@ final class CashFlowStatsTests: XCTestCase {
         XCTAssertNil(AutoCategory.guess("PARRA"))
     }
 }
+
+final class TagStatsTests: XCTestCase {
+    let cal = Calendar(identifier: .gregorian)
+
+    func testPlataDeUnTerceroNoCuentaEnEstadisticas() {
+        let day = cal.date(from: DateComponents(year: 2026, month: 10, day: 5))!
+        let interval = Stats.monthInterval(containing: day, calendar: cal)
+        let ms = [
+            MovementSnapshot(amount: 88_000, date: day, kind: .gasto, method: .transferencia, accountID: nil, isExternal: true),
+            MovementSnapshot(amount: 100_000, date: day, kind: .ingreso, method: .transferencia, accountID: nil, isExternal: true),
+            MovementSnapshot(amount: 10_000, date: day, kind: .gasto, method: .debito, accountID: nil),
+        ]
+        let s = Stats.summary(movements: ms, in: interval, pendingFixed: 0)
+        XCTAssertEqual(s.income, 0)
+        XCTAssertEqual(s.expenses, 10_000)
+    }
+
+    func testEtiquetasEnLaNota() {
+        let note = MovementTag.compose(text: "para mi amiga", hold: true, thirdParty: true)
+        XCTAssertEqual(note, "[Retención pendiente] [Plata de un tercero] para mi amiga")
+        XCTAssertTrue(MovementTag.has(.hold, in: note))
+        XCTAssertTrue(MovementTag.has(.thirdParty, in: note))
+        XCTAssertEqual(MovementTag.stripped(note), "para mi amiga")
+        XCTAssertNil(MovementTag.compose(text: "  ", hold: false, thirdParty: false))
+        XCTAssertFalse(MovementTag.has(.hold, in: nil))
+    }
+}

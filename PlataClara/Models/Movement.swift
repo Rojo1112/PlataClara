@@ -53,6 +53,10 @@ final class Movement {
     func snapshot(categoryName: String?) -> MovementSnapshot {
         MovementSnapshot(id: id, amount: amount, date: date, kind: kind, method: method, accountID: accountID,
                          destinationAccountID: destinationAccountID, categoryName: categoryName, status: status,
-                         isRefund: kind == .ingreso && MovementClassifier.isRefund(merchant ?? ""), merchant: merchant)
+                         isRefund: kind == .ingreso && MovementClassifier.isRefund(merchant ?? ""), merchant: merchant,
+                         isExternal: MovementTag.has(.thirdParty, in: note))
     }
+
+    /// Etiquetas activas, para mostrarlas junto al movimiento.
+    var tagTitles: [String] { MovementTag.allCases.filter { MovementTag.has($0, in: note) }.map(\.title) }
 }

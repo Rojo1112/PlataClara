@@ -17,6 +17,8 @@ struct MovementFormView: View {
     @State private var categoryID: UUID?
     @State private var merchant: String
     @State private var note: String
+    @State private var isHold: Bool
+    @State private var isThirdParty: Bool
     @State private var date: Date
     @State private var errors: [MovementValidationError] = []
 
@@ -29,7 +31,9 @@ struct MovementFormView: View {
         _destinationID = State(initialValue: movement?.destinationAccountID)
         _categoryID = State(initialValue: movement?.categoryID)
         _merchant = State(initialValue: movement?.merchant ?? "")
-        _note = State(initialValue: movement?.note ?? "")
+        _note = State(initialValue: MovementTag.stripped(movement?.note))
+        _isHold = State(initialValue: MovementTag.has(.hold, in: movement?.note))
+        _isThirdParty = State(initialValue: MovementTag.has(.thirdParty, in: movement?.note))
         _date = State(initialValue: movement?.date ?? .now)
     }
 
@@ -81,7 +85,13 @@ struct MovementFormView: View {
                         TextField(kind == .ingreso ? "De quién" : "Comercio o destinatario", text: $merchant)
                     }
                 }
-                Section { TextField("Nota", text: $note, axis: .vertical) }
+                Section {
+                    TextField("Nota", text: $note, axis: .vertical)
+                    Toggle("Retención pendiente", isOn: $isHold)
+                    Toggle("Plata de un tercero", isOn: $isThirdParty)
+                } footer: {
+                    Text("Retención pendiente: el banco apartó la plata pero todavía no la cobra, como el reloj de Nu. Plata de un tercero: pasó por tu cuenta pero no es tuya (por ejemplo, pagaste por una amiga y te devolvió); cuenta en tu saldo, no en gastos ni ingresos.")
+                }
                 if !errors.isEmpty {
                     Section {
                         ForEach(errors, id: \.self) { Text($0.message).foregroundStyle(.red) }
@@ -130,7 +140,7 @@ struct MovementFormView: View {
         let trimmedMerchant = merchant.trimmingCharacters(in: .whitespaces)
         target.merchant = trimmedMerchant.isEmpty ? nil : trimmedMerchant
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        target.note = trimmedNote.isEmpty ? nil : trimmedNote
+        target.note = MovementTag.compose(text: trimmedNote, hold: isHold, thirdParty: isThirdParty)
         target.status = .confirmado
         try? context.save()
         MovementStore.didConfirm(target, context: context)

@@ -34,6 +34,7 @@ struct StatsView: View {
         let monthExpenses = movements
             .filter { $0.kind == .gasto && $0.status == .confirmado && month.contains($0.date) && $0.date < month.end }
             .sorted { $0.date > $1.date }
+        let cash = Ledger.totalCash(accounts: accounts.map(\.snapshot), movements: snapshots)
         let history = lastSixMonths(snapshots: snapshots, reference: reference, calendar: calendar, savings: savings)
 
         NavigationStack {
@@ -55,6 +56,18 @@ struct StatsView: View {
                 }
 
                 Section {
+                    row("Dinero que tienes hoy", cash, color: .primary, bold: true)
+                    if pending > 0 {
+                        row("Gastos fijos que faltan por pagar", pending, color: .orange)
+                        row("Te queda tras los fijos", cash - pending, color: cash - pending < 0 ? .orange : .green, bold: true)
+                    }
+                } header: {
+                    Text("Tu plata hoy")
+                } footer: {
+                    Text("Suma el saldo de tus cuentas de ahorros con todos los movimientos cargados. Si no coincide con el banco, abre la cuenta en Ajustes › Cuentas y usa «Cuadrar con el banco».")
+                }
+
+                Section {
                     row("Ingresos (te pagaron o te enviaron)", summary.income, color: .green)
                     if summary.refunds > 0 {
                         row("Reembolsos de compras", summary.refunds, color: .green)
@@ -71,7 +84,7 @@ struct StatsView: View {
                     if summary.unregisteredCardSpending > 0 {
                         row("Pagos a tarjeta de crédito", summary.unregisteredCardSpending)
                     }
-                    row("Total que te salió", summary.totalOut, color: summary.overspent ? .red : .primary, bold: true)
+                    row("Total que te salió", summary.totalOut, color: summary.overspent ? .orange : .primary, bold: true)
                 } header: {
                     Text("Lo que te salió")
                 } footer: {
@@ -79,7 +92,7 @@ struct StatsView: View {
                 }
 
                 Section("Ahorro") {
-                    row(summary.saved < 0 ? "Te faltó" : "Ahorro del mes", summary.saved, color: summary.saved < 0 ? .red : .green)
+                    row(summary.saved < 0 ? "Salió de más este mes" : "Ahorro del mes", summary.saved, color: summary.saved < 0 ? .orange : .green)
                     if pending > 0 {
                         row("Gastos fijos que faltan por pagar", pending, color: .orange)
                         row("Ahorro posible", summary.possibleSaving, color: summary.possibleSaving < 0 ? .red : .green)
@@ -147,16 +160,20 @@ struct StatsView: View {
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 Label(s.overspent
-                      ? "Gastaste \(Money.format(s.deficit)) más de lo que te entró"
+                      ? "Este mes salió \(Money.format(s.deficit)) más de lo que entró"
                       : "Te sobraron \(Money.format(s.saved)) de lo que te entró",
-                      systemImage: s.overspent ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
+                      systemImage: s.overspent ? "exclamationmark.circle.fill" : "checkmark.seal.fill")
                     .font(.headline)
-                    .foregroundStyle(s.overspent ? Color.red : Color.green)
+                    .foregroundStyle(s.overspent ? Color.orange : Color.green)
                 Text("Te entró \(Money.format(s.totalIn)) · te salió \(Money.format(s.totalOut))")
                     .font(.subheadline).foregroundStyle(.secondary)
+                if s.overspent {
+                    Text("No es una deuda: estás usando plata que ya tenías en la cuenta.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 if s.totalIn > 0 {
                     ProgressView(value: Double(min(s.totalOut, s.totalIn)), total: Double(s.totalIn))
-                        .tint(s.overspent ? .red : (Double(s.totalOut) / Double(s.totalIn) > 0.85 ? .orange : .green))
+                        .tint(s.overspent ? .orange : (Double(s.totalOut) / Double(s.totalIn) > 0.85 ? .yellow : .green))
                     Text("Usaste el \(Int((Double(s.totalOut) / Double(s.totalIn) * 100).rounded())) % de lo que te entró")
                         .font(.caption).foregroundStyle(.secondary)
                 }

@@ -129,7 +129,7 @@ public enum Stats {
     }
 
     static func confirmed(_ movements: [MovementSnapshot], in interval: DateInterval) -> [MovementSnapshot] {
-        movements.filter { $0.status == .confirmado && $0.date >= interval.start && $0.date < interval.end }
+        movements.filter { $0.status == .confirmado && !$0.isExternal && $0.date >= interval.start && $0.date < interval.end }
     }
 
     static func expenses(_ movements: [MovementSnapshot], in interval: DateInterval) -> [MovementSnapshot] {

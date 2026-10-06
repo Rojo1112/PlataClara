@@ -17,6 +17,10 @@ struct MovementRow: View {
                 Text(movement.merchant ?? category?.name ?? movement.kind.displayName).lineLimit(1)
                 Text("\(movement.method.displayName) · \(account?.name ?? "Sin cuenta") · \(Fecha.diaHora(movement.date))")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                if !movement.tagTitles.isEmpty {
+                    Text(movement.tagTitles.joined(separator: " · "))
+                        .font(.caption2.weight(.semibold)).foregroundStyle(.orange).lineLimit(1)
+                }
             }
             Spacer()
             Text(signedAmount).monospacedDigit().foregroundStyle(amountColor)

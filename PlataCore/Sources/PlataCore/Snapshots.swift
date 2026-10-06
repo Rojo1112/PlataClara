@@ -25,10 +25,12 @@ public struct MovementSnapshot: Equatable, Sendable {
     /// Ingreso que es la devolución de un gasto: resta del gasto en las estadísticas.
     public let isRefund: Bool
     public let merchant: String?
+    /// Plata de un tercero: cuenta en el saldo pero no en gastos ni ingresos.
+    public let isExternal: Bool
 
     public init(id: UUID = UUID(), amount: Int, date: Date, kind: MovementKind, method: PaymentMethod,
                 accountID: UUID?, destinationAccountID: UUID? = nil, categoryName: String? = nil,
-                status: MovementStatus = .confirmado, isRefund: Bool = false, merchant: String? = nil) {
+                status: MovementStatus = .confirmado, isRefund: Bool = false, merchant: String? = nil, isExternal: Bool = false) {
         self.id = id
         self.amount = amount
         self.date = date
@@ -40,5 +42,6 @@ public struct MovementSnapshot: Equatable, Sendable {
         self.status = status
         self.isRefund = isRefund
         self.merchant = merchant
+        self.isExternal = isExternal
     }
 }

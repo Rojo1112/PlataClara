@@ -17,6 +17,8 @@ struct AccountFormView: View {
     @State private var last4: String
     @State private var walletCardName: String
     @State private var emailSenders: String
+    @State private var realBalance = 0
+    @Query private var movements: [Movement]
 
     init(account: Account?) {
         self.account = account
@@ -95,6 +97,17 @@ struct AccountFormView: View {
                 } footer: {
                     Text("Sirven para saber a qué cuenta va cada aviso del banco o pago con Apple Pay. El nombre de Wallet es el que ves al tocar la tarjeta en la app Wallet; debe ser igual.")
                 }
+                if let account {
+                    Section {
+                        LabeledContent("La app calcula", value: Money.format(calculatedBalance(account)))
+                        AmountField(title: kind == .credito ? "Deuda real hoy en el banco" : "Saldo real hoy en el banco", value: $realBalance)
+                        Button("Cuadrar con el banco") { reconcile(account) }
+                    } header: {
+                        Text("Cuadrar con el banco")
+                    } footer: {
+                        Text("Escribe lo que muestra tu banco hoy. La app ajusta el saldo inicial para que su cálculo coincida, sin tocar ningún movimiento.")
+                    }
+                }
             }
             .navigationTitle(account == nil ? "Nueva cuenta" : "Editar cuenta")
             .toolbar {
@@ -120,6 +133,18 @@ struct AccountFormView: View {
         name = template.name.replacingOccurrences(of: " · ", with: " ")
         bank = template.bank
         kind = template.kind
+    }
+
+    /// Saldo que calcula la app con el saldo inicial que está escrito en el formulario.
+    private func calculatedBalance(_ account: Account) -> Int {
+        let snapshot = AccountSnapshot(id: account.id, kind: kind, openingBalance: openingBalance)
+        return Ledger.balance(of: snapshot, movements: movements.map { $0.snapshot(categoryName: nil) })
+    }
+
+    /// Cambia el saldo inicial para que el cálculo de la app sea igual al saldo real del banco.
+    private func reconcile(_ account: Account) {
+        let movementsEffect = calculatedBalance(account) - openingBalance
+        openingBalance = realBalance - movementsEffect
     }
 
     private func save() {
