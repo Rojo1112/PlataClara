@@ -109,10 +109,10 @@ struct OnboardingView: View {
 
     private var shortcuts: some View {
         page(icon: "bolt.fill", title: "Atajos listos",
-             text: "Registrar pagos con tarjeta o QR, envíos y entradas de otras cuentas ya viene dentro de la app. Aparecen solos en Atajos y en Siri.") {
+             text: "Registrar pagos con tarjeta o QR, envíos y entradas de otras cuentas ya viene dentro de la app. Aparecen solos en la app Atajos.") {
             VStack(spacing: 12) {
                 ShortcutsLink().shortcutsLinkStyle(.automaticOutline)
-                Text("Lo que registren no se duplica si después subes una captura o un extracto: se completa con los datos del banco. Los verás todos, con la frase para Siri, en Ajustes › Configurar Atajos.")
+                Text("Lo que registren no se duplica si después subes una captura o un extracto: se completa con los datos del banco. Los verás todos en Ajustes › Todos los atajos.")
                     .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
         }
