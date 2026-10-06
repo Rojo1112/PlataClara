@@ -40,7 +40,15 @@ enum CaptureService {
                      date: date, context: context)
     }
 
+    /// Registra el movimiento y, como pasa solo, avisa con una notificación cuánto fue.
     static func store(parsed: ParsedMovement?, accountID: UUID?, rawText: String, source: CaptureSource,
+                      date: Date, context: ModelContext) -> CaptureOutcome {
+        let outcome = persist(parsed: parsed, accountID: accountID, rawText: rawText, source: source, date: date, context: context)
+        PaymentNotifier.notify(outcome, source: source, context: context)
+        return outcome
+    }
+
+    private static func persist(parsed: ParsedMovement?, accountID: UUID?, rawText: String, source: CaptureSource,
                               date: Date, context: ModelContext) -> CaptureOutcome {
         let since = date.addingTimeInterval(-86_400)
         let recentMovements = (try? context.fetch(FetchDescriptor<Movement>(predicate: #Predicate { $0.date >= since }))) ?? []

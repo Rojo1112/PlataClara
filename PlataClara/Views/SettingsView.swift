@@ -19,7 +19,8 @@ struct SettingsView: View {
                 NavigationLink("Importar extracto bancario") { StatementImportView() }
             }
             Section("Registro automático") {
-                NavigationLink("Configurar Atajos") { ShortcutsGuideView() }
+                NavigationLink("Activar Apple Pay automático") { ApplePaySetupView() }
+                NavigationLink("Todos los atajos") { ShortcutsGuideView() }
                 Button("Ver el tutorial de nuevo") { showTutorial = true }
             }
             BackupFolderSection()

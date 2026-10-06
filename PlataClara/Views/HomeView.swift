@@ -8,6 +8,8 @@ struct HomeView: View {
     @Query private var recurring: [RecurringExpense]
     @Query private var occurrences: [RecurringOccurrence]
     @AppStorage("abrirNuevoMovimiento") private var openNewMovement = false
+    @AppStorage(PaymentNotifier.lastApplePayKey) private var lastApplePay: Double = 0
+    @AppStorage("ocultarAvisoApplePay") private var hideApplePayTip = false
 
     var body: some View {
         let snapshots = movements.map { $0.snapshot(categoryName: nil) }
@@ -21,6 +23,22 @@ struct HomeView: View {
 
         NavigationStack {
             List {
+                if lastApplePay == 0, !hideApplePayTip, !accounts.isEmpty {
+                    Section {
+                        NavigationLink {
+                            ApplePaySetupView()
+                        } label: {
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Activa el registro automático de Apple Pay").font(.subheadline.weight(.semibold))
+                                    Text("30 segundos, una sola vez. Cada pago te llega con su monto.")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            } icon: { Image(systemName: "bolt.badge.automatic.fill").foregroundStyle(.orange) }
+                        }
+                        Button("Ahora no") { hideApplePayTip = true }.font(.caption)
+                    }
+                }
                 Section {
                     metric("Dinero disponible", Ledger.totalCash(accounts: accountSnapshots, movements: snapshots))
                     metric("Deuda en tarjetas", Ledger.totalDebt(accounts: accountSnapshots, movements: snapshots), .red)
