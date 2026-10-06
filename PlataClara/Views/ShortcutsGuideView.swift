@@ -18,7 +18,7 @@ struct ShortcutsGuideView: View {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.title)
-                                Text("Dile a Siri: «\(item.phrase)»").font(.caption).foregroundStyle(.secondary)
+                                Text(item.detail).font(.caption).foregroundStyle(.secondary)
                             }
                         } icon: {
                             Image(systemName: item.icon)
@@ -34,7 +34,7 @@ struct ShortcutsGuideView: View {
             } header: {
                 Text("Atajos que ya tienes")
             } footer: {
-                Text("Estos atajos ya vienen dentro de la app: aparecen solos en Atajos, en Siri y en Spotlight. «Agregar» abre Atajos para que los pongas en el botón de acción, en la pantalla de bloqueo o en la pantalla de inicio. Lo que registren no se duplica si después subes una captura o un extracto: se completa con los datos del banco.")
+                Text("Estos atajos ya vienen dentro de la app: aparecen solos en la app Atajos. «Agregar» abre Atajos para que los pongas en el botón de acción, en la pantalla de bloqueo o en la pantalla de inicio. Lo que registren no se duplica si después subes una captura o un extracto: se completa con los datos del banco.")
             }
             Section {
                 if accounts.isEmpty {
@@ -94,17 +94,17 @@ struct ShortcutsGuideView: View {
 }
 
 private extension ShortcutsGuideView {
-    static let readyShortcuts: [(title: String, phrase: String, icon: String)] = [
-        ("Pago con tarjeta", "Registrar pago con tarjeta en PlataClara", "creditcard"),
-        ("Pago con QR", "Registrar pago con QR en PlataClara", "qrcode"),
-        ("Envío a otra cuenta", "Registrar envío en PlataClara", "arrow.up.right.circle"),
-        ("Entrada de otra cuenta", "Registrar entrada en PlataClara", "arrow.down.left.circle"),
-        ("Registrar gasto", "Registrar gasto en PlataClara", "minus.circle"),
-        ("Registrar ingreso", "Registrar ingreso en PlataClara", "plus.circle"),
-        ("Cuánto me sobra", "¿Cuánto me sobra en PlataClara?", "chart.pie"),
-        ("Nuevo movimiento", "Nuevo movimiento en PlataClara", "square.and.pencil"),
-        ("Registrar aviso", "Registrar aviso en PlataClara", "text.viewfinder"),
-        ("Respaldar ahora", "Respaldar PlataClara", "externaldrive"),
+    static let readyShortcuts: [(title: String, detail: String, icon: String)] = [
+        ("Pago con tarjeta", "Monto, comercio y cuenta", "creditcard"),
+        ("Pago con QR", "Monto, comercio y cuenta", "qrcode"),
+        ("Envío a otra cuenta", "Monto, a quién y desde qué cuenta", "arrow.up.right.circle"),
+        ("Entrada de otra cuenta", "Monto, de quién y a qué cuenta", "arrow.down.left.circle"),
+        ("Registrar gasto", "Monto, motivo y cuenta", "minus.circle"),
+        ("Registrar ingreso", "Monto, de quién y cuenta", "plus.circle"),
+        ("Cuánto me sobra", "Resumen del mes", "chart.pie"),
+        ("Nuevo movimiento", "Abre el formulario", "square.and.pencil"),
+        ("Registrar aviso", "Lee el texto de un aviso", "text.viewfinder"),
+        ("Respaldar ahora", "Guarda una copia de tus datos", "externaldrive"),
     ]
 
     func openShortcuts() {

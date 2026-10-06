@@ -2,7 +2,7 @@ import AppIntents
 import SwiftData
 import PlataCore
 
-/// Atajos que aparecen solos en la app Atajos, en Siri y en Spotlight apenas se instala PlataClara.
+/// Atajos que aparecen solos en la app Atajos, en la app Atajos apenas se instala PlataClara.
 /// Pasan por el mismo camino que los avisos y Apple Pay: si después subes una captura o un extracto con el mismo
 /// movimiento, no se duplica; se completa con los datos del banco.
 enum QuickRegister {
