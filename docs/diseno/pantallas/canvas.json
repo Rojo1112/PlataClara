@@ -1,0 +1,19 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-07T18:30:00Z" },
+  "title": "Diseño PlataClara",
+  "launch": { "view": "canvas" },
+  "boards": {
+    "Portada.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "Portada al abrir la app" },
+    "Logo.dc.html": { "x": 470, "y": 0, "w": 900, "h": 520, "title": "Logo e ícono" },
+    "Main.dc.html": { "x": 1450, "y": 0, "w": 390, "h": 844, "title": "Inicio" },
+    "Estadisticas.dc.html": { "x": 1920, "y": 0, "w": 390, "h": 844, "title": "Estadísticas" },
+    "Importar.dc.html": { "x": 2390, "y": 0, "w": 390, "h": 844, "title": "Importar extracto" },
+    "Aviso.dc.html": { "x": 2860, "y": 0, "w": 390, "h": 844, "title": "Aviso de cada pago" }
+  },
+  "order": ["Portada.dc.html", "Logo.dc.html", "Main.dc.html", "Estadisticas.dc.html", "Importar.dc.html", "Aviso.dc.html"],
+  "notes": {
+    "t1": { "x": 0, "y": -260, "text": "PlataClara · Diseño de la app para iPhone (claro y oscuro automático)", "kind": "title1", "maxW": 3250 }
+  },
+  "designSystems": []
+}

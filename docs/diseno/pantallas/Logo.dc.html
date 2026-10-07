@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Logo e ícono de PlataClara</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.pc{--bg:#F3F5F2;--ink:#10231F;--muted:#5B6B66;--line:#E3E8E5}
+@media (prefers-color-scheme: dark){.pc.auto{--bg:#0B1513;--ink:#EAF2EF;--muted:#9FB3AC;--line:#243531}}
+.pc.dark{--bg:#0B1513;--ink:#EAF2EF;--muted:#9FB3AC;--line:#243531}
+</style>
+</helmet>
+<div class="pc {{themeClass}}" style="width: 900px; height: 520px; box-sizing: border-box; background: var(--bg); font-family: 'Manrope', sans-serif; color: var(--ink); padding: 40px 48px; display: flex; flex-direction: column; gap: 28px">
+  <div style="display: flex; align-items: center; gap: 16px">
+    <svg width="56" height="56" viewBox="0 0 100 100" role="img" aria-label="Ícono de PlataClara"><rect width="100" height="100" rx="22.4" fill="{{accent}}"/><rect x="30" y="23.5" width="9" height="56.5" rx="4.5" fill="#FFFFFF"/><circle cx="54" cy="44" r="16" fill="none" stroke="#FFFFFF" stroke-width="9"/><circle cx="54" cy="44" r="5.5" fill="#BFF0E1"/></svg>
+    <div>
+      <div style="font-size: 34px; font-weight: 800; letter-spacing: -0.8px; line-height: 1">PlataClara</div>
+      <div style="font-size: 15px; color: var(--muted); margin-top: 6px; font-weight: 600">Tu plata, clara.</div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 36px; align-items: flex-start">
+    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center">
+      <svg width="220" height="220" viewBox="0 0 100 100" role="img" aria-label="Ícono claro"><rect width="100" height="100" rx="22.4" fill="{{accent}}"/><rect x="30" y="23.5" width="9" height="56.5" rx="4.5" fill="#FFFFFF"/><circle cx="54" cy="44" r="16" fill="none" stroke="#FFFFFF" stroke-width="9"/><circle cx="54" cy="44" r="5.5" fill="#BFF0E1"/></svg>
+      <div style="font-size: 14px; font-weight: 700">Predeterminado</div>
+      <div style="font-size: 12px; color: var(--muted); margin-top: -8px">Fondo verde, marca blanca</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center">
+      <svg width="220" height="220" viewBox="0 0 100 100" role="img" aria-label="Ícono oscuro"><rect width="100" height="100" rx="22.4" fill="#0B1513"/><rect x="30" y="23.5" width="9" height="56.5" rx="4.5" fill="#5FD8B7"/><circle cx="54" cy="44" r="16" fill="none" stroke="#5FD8B7" stroke-width="9"/><circle cx="54" cy="44" r="5.5" fill="#FFFFFF"/></svg>
+      <div style="font-size: 14px; font-weight: 700">Modo oscuro</div>
+      <div style="font-size: 12px; color: var(--muted); margin-top: -8px">Fondo casi negro, marca menta</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center">
+      <svg width="220" height="220" viewBox="0 0 100 100" role="img" aria-label="Ícono tintado"><rect width="100" height="100" rx="22.4" fill="#2B3532"/><rect x="30" y="23.5" width="9" height="56.5" rx="4.5" fill="#E6ECE9"/><circle cx="54" cy="44" r="16" fill="none" stroke="#E6ECE9" stroke-width="9"/><circle cx="54" cy="44" r="5.5" fill="#E6ECE9" fill-opacity="0.55"/></svg>
+      <div style="font-size: 14px; font-weight: 700">Tintado</div>
+      <div style="font-size: 12px; color: var(--muted); margin-top: -8px">Un solo tono, iOS le pone el color</div>
+    </div>
+  </div>
+
+  <div style="font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 760px">La marca es una P hecha con una moneda: el asta es el borde del billete y el aro, la moneda. El punto del centro es la plata a la vista. Una sola forma, sin degradados, legible a 60 px.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","default":"auto","options":["auto","claro","oscuro"]},"accent":{"editor":"color","default":"#0E7C66","options":["#0E7C66","#1F5FBF","#6A4BC4","#10231F"]},"$preview":{"width":900,"height":520}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const t = this.props.tema;
+    return { accent: this.props.accent ?? '#0E7C66', themeClass: t === 'claro' ? 'light' : (t === 'oscuro' ? 'dark' : 'auto') };
+  }
+}
+</script>
+</body>
+</html>

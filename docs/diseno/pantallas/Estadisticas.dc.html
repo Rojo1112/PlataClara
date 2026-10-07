@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Estadísticas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.pc{--bg:#F3F5F2;--card:#FFFFFF;--line:#E3E8E5;--ink:#10231F;--muted:#5B6B66;--pos:#0B6B57;--warn:#B45309;--warn-ink:#8A3F04;--warn-sub:#7A4A12;--warn-bg:#FDEFD9;--soft:#E1F1EC;--soft-ink:#1E5247;--faint:#AEB9B4;--toggle:#D5DCD8;--nav:#FFFFFF;--acc-text:var(--acc)}
+@media (prefers-color-scheme: dark){.pc.auto{--bg:#0B1513;--card:#14211E;--line:#243531;--ink:#EAF2EF;--muted:#9FB3AC;--pos:#5FD8B7;--warn:#F0A04B;--warn-ink:#FFB866;--warn-sub:#E8C58F;--warn-bg:#3A2A12;--soft:#12302A;--soft-ink:#A9E4D3;--faint:#4A5C57;--toggle:#3A4B46;--nav:#101C19;--acc-text:#5FD8B7}}
+.pc.dark{--bg:#0B1513;--card:#14211E;--line:#243531;--ink:#EAF2EF;--muted:#9FB3AC;--pos:#5FD8B7;--warn:#F0A04B;--warn-ink:#FFB866;--warn-sub:#E8C58F;--warn-bg:#3A2A12;--soft:#12302A;--soft-ink:#A9E4D3;--faint:#4A5C57;--toggle:#3A4B46;--nav:#101C19;--acc-text:#5FD8B7}
+</style>
+</helmet>
+<div class="pc {{themeClass}}" style="--acc: {{accent}}; width: 390px; height: 844px; box-sizing: border-box; background: var(--bg); font-family: 'Manrope', sans-serif; color: var(--ink); display: flex; flex-direction: column; overflow: hidden">
+  <div style="flex: 1; min-height: 0; padding: 56px 20px 0 20px; display: flex; flex-direction: column; gap: 14px">
+    <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.5px">Estadísticas</h1>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 4px">
+      <button aria-label="Mes anterior" style="width: 44px; height: 40px; border: 0; background: transparent; color: var(--acc-text); display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div style="font-size: 16px; font-weight: 800">octubre 2026</div>
+      <button aria-label="Mes siguiente" disabled style="width: 44px; height: 40px; border: 0; background: transparent; color: var(--faint); display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+
+    <div style="background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; gap: 10px; align-items: flex-start">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        <div style="font-size: 17px; font-weight: 800; color: var(--warn-ink); line-height: 1.25">Este mes salió $ 57.576 más de lo que entró</div>
+      </div>
+      <div style="font-size: 13px; color: var(--muted)">Te entró $ 376.361 · te salió $ 433.937</div>
+      <div style="height: 10px; border-radius: 5px; background: var(--line); overflow: hidden"><div style="width: 100%; height: 10px; background: var(--warn)"></div></div>
+      <div style="font-size: 12px; color: var(--muted)">Usaste el 115 % de lo que te entró. No es una deuda: estás usando plata que ya tenías.</div>
+    </div>
+
+    <div style="display: flex; gap: 12px">
+      <div style="flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px">
+        <div style="font-size: 12px; font-weight: 700; color: var(--muted)">LO QUE TE ENTRÓ</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--pos); margin-top: 6px; font-variant-numeric: tabular-nums">$ 376.361</div>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5">Ingresos $ 329.000<br>Reembolsos $ 47.361</div>
+      </div>
+      <div style="flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px">
+        <div style="font-size: 12px; font-weight: 700; color: var(--muted)">LO QUE TE SALIÓ</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--warn-ink); margin-top: 6px; font-variant-numeric: tabular-nums">$ 433.937</div>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5">Gastos $ 333.937<br>Tarjeta $ 100.000</div>
+      </div>
+    </div>
+
+    <div style="background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+      <div style="font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.4px">GASTOS POR CATEGORÍA</div>
+      <div style="display: flex; align-items: center; gap: 18px">
+        <svg width="120" height="120" viewBox="0 0 42 42" style="flex: none" role="img" aria-label="Envíos 73 %, Transporte 24 %, Compras 2 %, Mercado 1 %">
+          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#0E7C66" stroke-width="6" stroke-dasharray="73 27" stroke-dashoffset="25"/>
+          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#1F5FBF" stroke-width="6" stroke-dasharray="24 76" stroke-dashoffset="-48"/>
+          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#E0A100" stroke-width="6" stroke-dasharray="2 98" stroke-dashoffset="-72"/>
+          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#A33E8F" stroke-width="6" stroke-dasharray="1 99" stroke-dashoffset="-74"/>
+        </svg>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 9px; font-size: 13px; font-variant-numeric: tabular-nums">
+          <div style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #0E7C66; flex: none"></span><span style="flex: 1">Envíos y billeteras</span><b>73 %</b></div>
+          <div style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #1F5FBF; flex: none"></span><span style="flex: 1">Transporte</span><b>24 %</b></div>
+          <div style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #E0A100; flex: none"></span><span style="flex: 1">Compras</span><b>2 %</b></div>
+          <div style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #A33E8F; flex: none"></span><span style="flex: 1">Mercado</span><b>1 %</b></div>
+        </div>
+      </div>
+      <a href="Main.dc.html" style="display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--line); text-decoration: none; color: var(--acc-text); font-size: 14px; font-weight: 700">Ver los 27 gastos del mes<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></a>
+    </div>
+  </div>
+
+  <nav style="height: 84px; flex: none; box-sizing: border-box; padding: 8px 8px 26px 8px; background: var(--nav); border-top: 1px solid var(--line); display: flex; justify-content: space-around">
+    <a href="Main.dc.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; justify-content: center; text-decoration: none; color: var(--muted); font-size: 11px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Inicio</a>
+    <a href="Importar.dc.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; justify-content: center; text-decoration: none; color: var(--muted); font-size: 11px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Movimientos</a>
+    <a href="Importar.dc.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; justify-content: center; text-decoration: none; color: var(--muted); font-size: 11px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h5l1 3h6l1-3h5"/></svg>Por revisar</a>
+    <a href="Estadisticas.dc.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; justify-content: center; text-decoration: none; color: var(--muted); font-size: 11px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Fijos</a>
+    <a href="Estadisticas.dc.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; justify-content: center; text-decoration: none; color: var(--acc-text); font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9h9a9 9 0 1 1-9-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>Estadísticas</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","default":"auto","options":["auto","claro","oscuro"]},"accent":{"editor":"color","default":"#0E7C66","options":["#0E7C66","#1F5FBF","#6A4BC4","#10231F"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const t = this.props.tema; return { accent: this.props.accent ?? '#0E7C66', themeClass: t === 'claro' ? 'light' : (t === 'oscuro' ? 'dark' : 'auto') };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Portada al abrir la app</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.pc{--bg:#F3F5F2;--ink:#10231F;--muted:#5B6B66}
+@media (prefers-color-scheme: dark){.pc.auto{--bg:#0B1513;--ink:#EAF2EF;--muted:#9FB3AC}}
+.pc.dark{--bg:#0B1513;--ink:#EAF2EF;--muted:#9FB3AC}
+</style>
+</helmet>
+<div class="pc {{themeClass}}" style="width: 390px; height: 844px; box-sizing: border-box; background: var(--bg); font-family: 'Manrope', sans-serif; color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; overflow: hidden">
+  <svg width="132" height="132" viewBox="0 0 100 100" role="img" aria-label="Logo de PlataClara"><rect width="100" height="100" rx="22.4" fill="{{accent}}"/><rect x="30" y="23.5" width="9" height="56.5" rx="4.5" fill="#FFFFFF"/><circle cx="54" cy="44" r="16" fill="none" stroke="#FFFFFF" stroke-width="9"/><circle cx="54" cy="44" r="5.5" fill="#BFF0E1"/></svg>
+  <div style="text-align: center">
+    <div style="font-size: 38px; font-weight: 800; letter-spacing: -1px; line-height: 1">PlataClara</div>
+    <div style="font-size: 17px; color: var(--muted); margin-top: 10px; font-weight: 600">Tu plata, clara.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","default":"auto","options":["auto","claro","oscuro"]},"accent":{"editor":"color","default":"#0E7C66","options":["#0E7C66","#1F5FBF","#6A4BC4","#10231F"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const t = this.props.tema;
+    return { accent: this.props.accent ?? '#0E7C66', themeClass: t === 'claro' ? 'light' : (t === 'oscuro' ? 'dark' : 'auto') };
+  }
+}
+</script>
+</body>
+</html>
