@@ -58,7 +58,11 @@ struct OnboardingView: View {
     private func page(icon: String, title: String, text: String, @ViewBuilder extra: () -> some View) -> some View {
         ScrollView {
             VStack(spacing: 16) {
-                Image(systemName: icon).font(.system(size: 56)).foregroundStyle(Color.accentColor).padding(.top, 24)
+                if icon == "logo" {
+                    LogoMark(size: 104).padding(.top, 24)
+                } else {
+                    Image(systemName: icon).font(.system(size: 56)).foregroundStyle(Color.accentColor).padding(.top, 24)
+                }
                 Text(title).font(.title2.bold()).multilineTextAlignment(.center)
                 Text(text).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 extra()
@@ -69,7 +73,7 @@ struct OnboardingView: View {
     }
 
     private var welcome: some View {
-        page(icon: "chart.pie.fill", title: "Tu plata, clara",
+        page(icon: "logo", title: "Tu plata, clara",
              text: "PlataClara te dice cuánto te entró, cuánto te salió y si gastaste más de lo que ingresó. Todo se guarda en tu iPhone.") { EmptyView() }
     }
 
