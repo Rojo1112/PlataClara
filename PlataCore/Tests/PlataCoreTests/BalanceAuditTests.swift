@@ -176,6 +176,7 @@ final class BalanceAuditTests: XCTestCase {
         XCTAssertEqual(s.closing, 6_023_450)
         XCTAssertEqual(s.pockets, 15_000_000)
         XCTAssertEqual(s.periodEnd, finDelDia(2026, 3, 30))
+        XCTAssertEqual(s.openingDate, finDelDia(2026, 2, 28))
         // 50.000 + 1.200.000 − 1.388.990,50 + 225 − 1.000 = −139.765,50; el banco dice 60.234,50: entraron 200.000 sin listar.
         XCTAssertEqual(s.continuityGap, 200_000)
         XCTAssertEqual(StatementSummary.pesos(s.closing), 60_234)

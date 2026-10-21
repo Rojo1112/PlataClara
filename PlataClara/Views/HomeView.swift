@@ -7,6 +7,7 @@ struct HomeView: View {
     @Query private var movements: [Movement]
     @Query private var recurring: [RecurringExpense]
     @Query private var occurrences: [RecurringOccurrence]
+    @Query private var checkpoints: [BalanceCheckpoint]
     @AppStorage("abrirNuevoMovimiento") private var openNewMovement = false
     @AppStorage(PaymentNotifier.lastApplePayKey) private var lastApplePay: Double = 0
     @AppStorage("ocultarAvisoApplePay") private var hideApplePayTip = false
@@ -14,6 +15,7 @@ struct HomeView: View {
     var body: some View {
         let snapshots = movements.map { $0.snapshot(categoryName: nil) }
         let accountSnapshots = accounts.map(\.snapshot)
+        let points = checkpoints.map(\.snapshot)
         let key = RecurringPlanner.monthKey(for: .now, calendar: .gregoriano)
         let pending = RecurringService.pendingTotal(monthKey: key, occurrences: occurrences, recurring: recurring)
         let savings = Set(accounts.filter { $0.kind != .credito }.map(\.id))
@@ -40,8 +42,8 @@ struct HomeView: View {
                     }
                 }
                 Section {
-                    metric("Dinero disponible", Ledger.totalCash(accounts: accountSnapshots, movements: snapshots))
-                    metric("Deuda en tarjetas", Ledger.totalDebt(accounts: accountSnapshots, movements: snapshots), .red)
+                    metric("Dinero disponible", Ledger.totalCash(accounts: accountSnapshots, movements: snapshots, checkpoints: points))
+                    metric("Deuda en tarjetas", Ledger.totalDebt(accounts: accountSnapshots, movements: snapshots, checkpoints: points), .red)
                 }
                 Section("Este mes") {
                     if summary.totalIn > 0 || summary.totalOut > 0 {
@@ -70,13 +72,27 @@ struct HomeView: View {
                     if accounts.isEmpty {
                         NavigationLink("Agrega tu primera cuenta") { AccountsView() }
                     }
-                    ForEach(accounts) { account in
-                        let balance = Ledger.balance(of: account.snapshot, movements: snapshots)
-                        VStack(alignment: .leading, spacing: 2) {
-                            metric(account.name, balance, account.kind == .credito ? .red : .primary)
-                            if account.kind == .credito, let limit = account.creditLimit, limit > 0 {
-                                Text("Cupo disponible: \(Money.format(limit - balance))")
-                                    .font(.caption).foregroundStyle(.secondary)
+                    // Las cajitas no van aparte: se suman a su cuenta, con el desglose debajo.
+                    ForEach(accounts.filter { $0.parentAccountID == nil }) { account in
+                        let audit = ReconciliationService.audit(account, movements: snapshots, checkpoints: points)
+                        let pockets = accounts.first { $0.parentAccountID == account.id }
+                        let inPockets = pockets.map { Ledger.balance(of: $0.snapshot, movements: snapshots, checkpoints: points) }
+                        let balance = audit.balance + (inPockets ?? 0)
+                        NavigationLink {
+                            ReconciliationView(account: account)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                metric(account.name, balance, account.kind == .credito ? .red : .primary)
+                                if let inPockets {
+                                    Text("En la cuenta \(Money.format(audit.balance)) · en cajitas \(Money.format(inPockets))")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                if account.kind == .credito, let limit = account.creditLimit, limit > 0 {
+                                    Text("Cupo disponible: \(Money.format(limit - balance))")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Text(statusLine(audit))
+                                    .font(.caption).foregroundStyle(ConfidenceLabel(confidence: audit.confidence).color)
                             }
                         }
                     }
@@ -92,6 +108,14 @@ struct HomeView: View {
                 }
             }
         }
+    }
+
+    /// «Confianza media · cuadrado el 1 mar · falta explicar $ 20.000».
+    private func statusLine(_ audit: AccountAudit) -> String {
+        var parts = [audit.confidence.title]
+        parts.append(audit.lastCheckpoint.map { "cuadrado el \(Fecha.diaMes($0.date))" } ?? "sin cuadrar con el banco")
+        if audit.unexplained > 0 { parts.append("falta explicar \(Money.format(audit.unexplained))") }
+        return parts.joined(separator: " · ")
     }
 
     private func metric(_ title: String, _ value: Int, _ color: Color = .primary) -> some View {

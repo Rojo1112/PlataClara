@@ -32,6 +32,12 @@ struct StatementImportView: View {
     @State private var message: String?
     @State private var photos: [PhotosPickerItem] = []
     @State private var fromScreenshots = false
+    @Query private var checkpoints: [BalanceCheckpoint]
+    @State private var summary = StatementSummary()
+    /// Renglones agregados al final desde el resumen (rendimientos, 4x1000, costos): no están en «lo que entró / salió».
+    @State private var summaryEntries = 0
+    @State private var saveCheckpoints = true
+    @State private var registerPocketTransfer = false
 
     var body: some View {
         List {
@@ -78,6 +84,10 @@ struct StatementImportView: View {
                 } footer: {
                     Text(summaryFooter(check))
                 }
+            }
+
+            if !entries.isEmpty, !fromScreenshots, summary.closing != nil {
+                continuitySection
             }
 
             if document != nil, !needsPassword, !readingImage, !entries.isEmpty, !usedOCR {
@@ -220,7 +230,85 @@ struct StatementImportView: View {
     /// Lo leído contra lo que el propio extracto declara («Lo que entró / salió de tu cuenta»), si lo trae.
     private var totalsCheck: TotalsCheck? {
         guard declared.income != nil || declared.outflow != nil else { return nil }
-        return StatementReconciler.check(entries: entries, against: declared)
+        return StatementReconciler.check(entries: Array(entries.dropLast(summaryEntries)), against: declared)
+    }
+
+    /// Contraste del saldo: inicio + entró − salió + rendimientos − 4x1000 − costos contra el final, y el inicio
+    /// contra el final del extracto anterior. El saldo final queda como punto de cuadre.
+    @ViewBuilder
+    private var continuitySection: some View {
+        Section {
+            if let gap = summary.continuityGap {
+                if abs(gap) <= 1 {
+                    Label("El saldo cuadra: inicio + lo que entró − lo que salió + rendimientos − impuestos da el saldo final.",
+                          systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    Label(gap > 0 ? "Entraron \(Money.format(gap)) que no aparecen en la lista de movimientos."
+                                  : "Salieron \(Money.format(-gap)) que no aparecen en la lista de movimientos.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Toggle(gap > 0 ? "Fue un traslado desde una cajita: registrarlo" : "Fue un traslado hacia una cajita: registrarlo",
+                           isOn: $registerPocketTransfer)
+                }
+            }
+            if let previous = previousClosing, let opening = StatementSummary.pesos(summary.opening),
+               abs(previous.balance - opening) > 1 {
+                Label("El saldo inicial (\(Money.format(opening))) no coincide con el final del extracto anterior (\(Money.format(previous.balance))).",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            }
+            if let closing = StatementSummary.pesos(summary.closing), let end = summary.periodEnd {
+                Toggle("Guardar el saldo final (\(Money.format(closing)) el \(Fecha.dia(end))) como punto de cuadre", isOn: $saveCheckpoints)
+            }
+        } header: {
+            Text("¿Cuadra el saldo del extracto?")
+        } footer: {
+            Text("Con el punto de cuadre, el saldo de la cuenta parte de lo que dice el banco y no de sumar todos los movimientos desde el principio.")
+        }
+    }
+
+    /// Punto de cuadre que ya existe justo donde empieza este extracto (el final del anterior).
+    private var previousClosing: BalanceCheckpoint? {
+        guard let accountID, let opening = summary.openingDate else { return nil }
+        return checkpoints.first { $0.accountID == accountID && abs($0.date.timeIntervalSince(opening)) < 1 }
+    }
+
+    /// Rendimientos, 4x1000 y costos del resumen como movimientos, el último día del período.
+    private func summaryLines(_ s: StatementSummary) -> [StatementEntry] {
+        guard let end = s.periodEnd else { return [] }
+        let at = end.addingTimeInterval(-59)
+        var lines: [StatementEntry] = []
+        if let value = StatementSummary.pesos(s.yield), value > 0 {
+            lines.append(StatementEntry(date: at, description: "Rendimientos del mes (resumen del extracto)", amount: value,
+                                        kind: .ingreso, balance: nil, hasTime: true))
+        }
+        if let value = StatementSummary.pesos(s.tax), value > 0 {
+            lines.append(StatementEntry(date: at, description: "Impuesto 4x1000 (resumen del extracto)", amount: value,
+                                        kind: .gasto, balance: nil, hasTime: true))
+        }
+        if let value = StatementSummary.pesos(s.withdrawalCosts), value > 0 {
+            lines.append(StatementEntry(date: at, description: "Costos por retiro (resumen del extracto)", amount: value,
+                                        kind: .gasto, balance: nil, hasTime: true))
+        }
+        return lines
+    }
+
+    /// Guarda el saldo inicial y el final del extracto como puntos de cuadre, y el de las cajitas si lo trae.
+    private func saveStatementCheckpoints(for account: Account) {
+        if registerPocketTransfer, let gap = summary.continuityGap, abs(gap) > 1, let end = summary.periodEnd {
+            ReconciliationService.apply(BalanceAudit.pocketTransfer(gap, date: end.addingTimeInterval(-120)), to: account, context: context)
+        }
+        guard saveCheckpoints, let end = summary.periodEnd, let closing = StatementSummary.pesos(summary.closing) else { return }
+        if previousClosing == nil, let opening = StatementSummary.pesos(summary.opening), let start = summary.openingDate {
+            ReconciliationService.addCheckpoint(accountID: account.id, balance: opening, date: start, source: .extracto, context: context)
+        }
+        ReconciliationService.addCheckpoint(accountID: account.id, balance: closing, date: end, source: .extracto, context: context)
+        if let pockets = StatementSummary.pesos(summary.pockets),
+           pockets > 0 || accounts.contains(where: { $0.parentAccountID == account.id }) {
+            let pocketsAccount = ReconciliationService.pockets(of: account, context: context)
+            ReconciliationService.addCheckpoint(accountID: pocketsAccount.id, balance: pockets, date: end, source: .extracto, context: context)
+        }
     }
 
     @ViewBuilder
@@ -352,10 +440,18 @@ struct StatementImportView: View {
         if screenshots {
             entries = ScreenshotParser.parse(text: text, now: .now, calendar: calendar)
             declared = StatementTotals(income: nil, outflow: nil)
+            summary = StatementSummary()
+            summaryEntries = 0
         } else {
             entries = StatementParser.parse(text: text, calendar: calendar, defaultYear: year)
             declared = StatementParser.declaredTotals(in: text)
+            summary = StatementParser.summary(in: text, calendar: calendar)
+            let extra = entries.isEmpty ? [] : summaryLines(summary)
+            entries += extra
+            summaryEntries = extra.count
         }
+        saveCheckpoints = true
+        registerPocketTransfer = false
         let snapshots = movements.map { $0.snapshot(categoryName: nil) }
         matches = StatementReconciler.match(entries, accountID: accountID, existing: snapshots, calendar: calendar)
         duplicates = Set(matches.keys)
@@ -420,6 +516,7 @@ struct StatementImportView: View {
         }
         try? context.save()
         created.forEach { MovementStore.didConfirm($0, context: context) }
+        if !fromScreenshots { saveStatementCheckpoints(for: account) }
         let alreadyThere = matches.count
         message = "Importados \(selected.count) movimientos nuevos."
             + (alreadyThere > 0 ? " \(alreadyThere) ya estaban registrados y no se repitieron" + (completed > 0 ? " (\(completed) se completaron con los datos del banco)." : ".") : "")
@@ -432,5 +529,7 @@ struct StatementImportView: View {
         holdFlags = []
         thirdPartyFlags = []
         rawText = ""
+        summary = StatementSummary()
+        summaryEntries = 0
     }
 }

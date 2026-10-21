@@ -54,7 +54,8 @@ final class Movement {
         MovementSnapshot(id: id, amount: amount, date: date, kind: kind, method: method, accountID: accountID,
                          destinationAccountID: destinationAccountID, categoryName: categoryName, status: status,
                          isRefund: kind == .ingreso && MovementClassifier.isRefund(merchant ?? ""), merchant: merchant,
-                         isExternal: MovementTag.has(.thirdParty, in: note))
+                         isExternal: MovementTag.has(.thirdParty, in: note),
+                         isHold: MovementTag.has(.hold, in: note))
     }
 
     /// Etiquetas activas, para mostrarlas junto al movimiento.

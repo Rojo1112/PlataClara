@@ -16,6 +16,8 @@ final class Account {
     var walletCardName: String?
     var emailSendersRaw: String = ""
     var createdAt: Date = Date()
+    /// Cuenta a la que pertenece: las cajitas de Nu viven dentro de la cuenta Nu y se muestran juntas.
+    var parentAccountID: UUID?
 
     init(name: String, bank: Bank, kind: AccountKind, openingBalance: Int) {
         self.name = name

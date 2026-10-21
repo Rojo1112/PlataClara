@@ -11,7 +11,7 @@ enum BackupService {
                 AccountDTO(id: $0.id, name: $0.name, bank: $0.bank, kind: $0.kind, openingBalance: $0.openingBalance,
                            creditLimit: $0.creditLimit, cutoffDay: $0.cutoffDay, paymentDay: $0.paymentDay,
                            last4: $0.last4, walletCardName: $0.walletCardName, emailSenders: $0.emailSenders,
-                           createdAt: $0.createdAt)
+                           createdAt: $0.createdAt, parentAccountID: $0.parentAccountID)
             },
             categories: context.all(Category.self).map {
                 CategoryDTO(id: $0.id, name: $0.name, icon: $0.icon, colorHex: $0.colorHex, isIncome: $0.isIncome,
@@ -31,6 +31,9 @@ enum BackupService {
             occurrences: context.all(RecurringOccurrence.self).map {
                 OccurrenceDTO(id: $0.id, recurringID: $0.recurringID, monthKey: $0.monthKey, dueDate: $0.dueDate,
                               status: $0.status, movementID: $0.movementID)
+            },
+            checkpoints: context.all(BalanceCheckpoint.self).map {
+                CheckpointDTO(id: $0.id, accountID: $0.accountID, date: $0.date, balance: $0.balance, source: $0.source)
             })
     }
 
@@ -54,6 +57,7 @@ enum BackupService {
             context.all(RecurringExpense.self).forEach { context.delete($0) }
             context.all(Category.self).forEach { context.delete($0) }
             context.all(Account.self).forEach { context.delete($0) }
+            context.all(BalanceCheckpoint.self).forEach { context.delete($0) }
 
             for dto in file.accounts {
                 let a = Account(name: dto.name, bank: dto.bank, kind: dto.kind, openingBalance: dto.openingBalance)
@@ -65,6 +69,7 @@ enum BackupService {
                 a.walletCardName = dto.walletCardName
                 a.emailSenders = dto.emailSenders
                 a.createdAt = dto.createdAt
+                a.parentAccountID = dto.parentAccountID
                 context.insert(a)
             }
             for dto in file.categories {
@@ -100,6 +105,11 @@ enum BackupService {
                 o.status = dto.status
                 o.movementID = dto.movementID
                 context.insert(o)
+            }
+            for dto in file.checkpoints ?? [] {
+                let cp = BalanceCheckpoint(accountID: dto.accountID, date: dto.date, balance: dto.balance, source: dto.source)
+                cp.id = dto.id
+                context.insert(cp)
             }
             try context.save()
         } catch {
