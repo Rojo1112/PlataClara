@@ -79,23 +79,23 @@ final class CashFlowStatsTests: XCTestCase {
     let cal = Calendar(identifier: .gregorian)
     let nu = UUID()
 
-    /// Como el mes de octubre de las capturas: los ingresos no alcanzan para gastos más el pago de la tarjeta.
+    /// Como el ejemplo de las capturas: los ingresos no alcanzan para gastos más el pago de la tarjeta.
     func testPagoATarjetaSinComprasRegistradasCuentaComoSalida() {
         let day = cal.date(from: DateComponents(year: 2026, month: 10, day: 3))!
         let interval = Stats.monthInterval(containing: day, calendar: cal)
         let ms = [
-            MovementSnapshot(amount: 329_000, date: day, kind: .ingreso, method: .llave, accountID: nu),
-            MovementSnapshot(amount: 333_937, date: day, kind: .gasto, method: .debito, accountID: nu),
-            MovementSnapshot(amount: 47_361, date: day, kind: .ingreso, method: .transferencia, accountID: nu, isRefund: true),
-            MovementSnapshot(amount: 100_000, date: day, kind: .transferencia, method: .transferencia, accountID: nu),
+            MovementSnapshot(amount: 315_000, date: day, kind: .ingreso, method: .llave, accountID: nu),
+            MovementSnapshot(amount: 293_970, date: day, kind: .gasto, method: .debito, accountID: nu),
+            MovementSnapshot(amount: 45_270, date: day, kind: .ingreso, method: .transferencia, accountID: nu, isRefund: true),
+            MovementSnapshot(amount: 80_000, date: day, kind: .transferencia, method: .transferencia, accountID: nu),
         ]
         let s = Stats.summary(movements: ms, in: interval, pendingFixed: 0, ownSavingsAccounts: [nu])
-        XCTAssertEqual(s.income, 329_000)
-        XCTAssertEqual(s.expenses, 286_576)
-        XCTAssertEqual(s.cardPayments, 100_000)
-        XCTAssertEqual(s.outflow, 386_576)
+        XCTAssertEqual(s.income, 315_000)
+        XCTAssertEqual(s.expenses, 248_700)
+        XCTAssertEqual(s.cardPayments, 80_000)
+        XCTAssertEqual(s.outflow, 328_700)
         XCTAssertTrue(s.overspent)
-        XCTAssertEqual(s.deficit, 57_576)
+        XCTAssertEqual(s.deficit, 13_700)
     }
 
     func testTransferenciaEntreCuentasPropiasNoEsSalida() {
@@ -112,8 +112,8 @@ final class CashFlowStatsTests: XCTestCase {
     func testCategoriasAutomaticas() {
         XCTAssertEqual(AutoCategory.guess("UBER*RIDES"), "Transporte")
         XCTAssertEqual(AutoCategory.guess("PAYU*UBER"), "Transporte")
-        XCTAssertEqual(AutoCategory.guess("Enviaste a MARIA ANGELICA PARRA"), "Envíos y billeteras")
-        XCTAssertEqual(AutoCategory.guess("OXXO MENSULI HIC"), "Mercado")
+        XCTAssertEqual(AutoCategory.guess("Enviaste a LAURA PRUEBA PARRA"), "Envíos y billeteras")
+        XCTAssertEqual(AutoCategory.guess("OXXO CENTRO"), "Mercado")
         XCTAssertEqual(AutoCategory.guess("Comisión por servicio"), "Costos financieros")
         XCTAssertEqual(AutoCategory.guess("NOVAVENTA"), "Compras")
         XCTAssertNil(AutoCategory.guess("PARRA"))
@@ -127,7 +127,7 @@ final class TagStatsTests: XCTestCase {
         let day = cal.date(from: DateComponents(year: 2026, month: 10, day: 5))!
         let interval = Stats.monthInterval(containing: day, calendar: cal)
         let ms = [
-            MovementSnapshot(amount: 88_000, date: day, kind: .gasto, method: .transferencia, accountID: nil, isExternal: true),
+            MovementSnapshot(amount: 75_000, date: day, kind: .gasto, method: .transferencia, accountID: nil, isExternal: true),
             MovementSnapshot(amount: 100_000, date: day, kind: .ingreso, method: .transferencia, accountID: nil, isExternal: true),
             MovementSnapshot(amount: 10_000, date: day, kind: .gasto, method: .debito, accountID: nil),
         ]

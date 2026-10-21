@@ -2,7 +2,7 @@ import Foundation
 
 /// Lee el texto (OCR) de capturas de pantalla de la lista de movimientos de la app del banco.
 /// Entiende dos formas:
-/// - **con fecha**: `Pagaste en NEQUI -$88.000,00` y debajo `05 oct - 11:59`;
+/// - **con fecha**: `Pagaste en TIENDA -$25.000,00` y debajo `05 mar - 11:59`;
 /// - **con encabezado de día**: `Hoy` / `Sábado` y cada movimiento con su hora (así sale la tarjeta de crédito de Nu).
 /// Lo tachado o con reloj en la app no se distingue en el texto: se revisa a mano antes de importar.
 public enum ScreenshotParser {
