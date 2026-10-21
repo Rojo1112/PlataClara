@@ -14,12 +14,16 @@ public struct StatementSummary: Equatable, Sendable {
     public var pockets: Int?
     /// Último día del período, a las 23:59:59: ahí vale el saldo final.
     public var periodEnd: Date?
+    /// El día antes de empezar el período, a las 23:59:59: ahí vale el saldo inicial.
+    public var openingDate: Date?
 
     public init(opening: Int? = nil, income: Int? = nil, outflow: Int? = nil, tax: Int? = nil, withdrawalCosts: Int? = nil,
-                yield: Int? = nil, closing: Int? = nil, pockets: Int? = nil, periodEnd: Date? = nil) {
+                yield: Int? = nil, closing: Int? = nil, pockets: Int? = nil, periodEnd: Date? = nil,
+                openingDate: Date? = nil) {
         self.opening = opening; self.income = income; self.outflow = outflow; self.tax = tax
         self.withdrawalCosts = withdrawalCosts; self.yield = yield; self.closing = closing; self.pockets = pockets
         self.periodEnd = periodEnd
+        self.openingDate = openingDate
     }
 
     /// Saldo final menos lo que da la cuenta (inicio + entró − salió + rendimientos − 4x1000 − costos), en pesos.
@@ -35,13 +39,14 @@ public struct StatementSummary: Equatable, Sendable {
 }
 
 extension StatementParser {
-    private static let periodEnd = try! NSRegularExpression(
-        pattern: #"\b\d{1,2}\s*-\s*(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sept?|oct|nov|dic)[a-z]*\.?\s+(\d{4})\b"#,
+    private static let periodRange = try! NSRegularExpression(
+        pattern: #"\b(\d{1,2})\s*-\s*(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sept?|oct|nov|dic)[a-z]*\.?\s+(\d{4})\b"#,
         options: [.caseInsensitive])
 
     /// Lee el resumen del extracto de Nu. Lo que no aparezca queda en nil.
     public static func summary(in text: String, calendar: Calendar) -> StatementSummary {
-        StatementSummary(opening: cents(#"tu dinero al inicio del mes"#, in: text),
+        let dates = period(in: text, calendar: calendar)
+        return StatementSummary(opening: cents(#"tu dinero al inicio del mes"#, in: text),
                          income: cents(#"lo que entr[oó] a tu cuenta"#, in: text),
                          outflow: cents(#"lo que sali[oó] de tu cuenta"#, in: text),
                          tax: cents(#"impuesto del 4\s?x\s?1\.?000"#, in: text),
@@ -49,7 +54,7 @@ extension StatementParser {
                          yield: cents(#"rendimiento total de tu cuenta"#, in: text),
                          closing: cents(#"tu dinero a(?:l)? final del mes"#, in: text),
                          pockets: cents(#"dinero en tus cajitas"#, in: text),
-                         periodEnd: endOfPeriod(in: text, calendar: calendar))
+                         periodEnd: dates?.end, openingDate: dates?.opening)
     }
 
     private static func cents(_ label: String, in text: String) -> Int? {
@@ -63,17 +68,24 @@ extension StatementParser {
         return pesos * 100 + (Int(decimals) ?? 0)
     }
 
-    private static func endOfPeriod(in text: String, calendar: Calendar) -> Date? {
+    /// «01 - 30 SEP 2026» → el 30 sep a las 23:59:59 (saldo final) y el 31 ago a las 23:59:59 (saldo inicial).
+    /// Si el día de inicio es mayor que el final, el período empezó el mes anterior.
+    private static func period(in text: String, calendar: Calendar) -> (opening: Date, end: Date)? {
         let ns = text as NSString
-        guard let m = periodEnd.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)),
-              let day = Int(ns.substring(with: m.range(at: 1))),
-              let month = months[String(TextNormalizer.fold(ns.substring(with: m.range(at: 2))).prefix(3))],
-              let year = Int(ns.substring(with: m.range(at: 3))) else { return nil }
+        guard let m = periodRange.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)),
+              let first = Int(ns.substring(with: m.range(at: 1))),
+              let last = Int(ns.substring(with: m.range(at: 2))),
+              let month = months[String(TextNormalizer.fold(ns.substring(with: m.range(at: 3))).prefix(3))],
+              let year = Int(ns.substring(with: m.range(at: 4))) else { return nil }
         var gregorian = Calendar(identifier: .gregorian)
         gregorian.timeZone = calendar.timeZone
-        let parts = DateComponents(year: year, month: month, day: day, hour: 23, minute: 59, second: 59)
-        guard let date = gregorian.date(from: parts), gregorian.component(.day, from: date) == day else { return nil }
-        return date
+        guard let end = gregorian.date(from: DateComponents(year: year, month: month, day: last, hour: 23, minute: 59, second: 59)),
+              gregorian.component(.day, from: end) == last else { return nil }
+        let startMonth = first > last ? (month == 1 ? 12 : month - 1) : month
+        let startYear = first > last && month == 1 ? year - 1 : year
+        guard let start = gregorian.date(from: DateComponents(year: startYear, month: startMonth, day: first)),
+              gregorian.component(.day, from: start) == first else { return nil }
+        return (start.addingTimeInterval(-1), end)
     }
 }
 

@@ -16,6 +16,7 @@ struct StatsView: View {
     @Query(sort: \Account.createdAt) private var accounts: [Account]
     @Query private var recurring: [RecurringExpense]
     @Query private var occurrences: [RecurringOccurrence]
+    @Query private var checkpoints: [BalanceCheckpoint]
     @State private var monthOffset = 0
 
     var body: some View {
@@ -31,10 +32,13 @@ struct StatsView: View {
         let byCategory = Stats.spendingByCategory(movements: snapshots, in: month)
         let top = Stats.topSpending(movements: snapshots, in: month)
         let byMethod = Stats.expensesByMethod(movements: snapshots, in: month)
+        let sources = Stats.incomeBySource(movements: snapshots, in: month)
+        let thirdParty = Stats.thirdPartyNet(movements: snapshots, in: month)
         let monthExpenses = movements
             .filter { $0.kind == .gasto && $0.status == .confirmado && month.contains($0.date) && $0.date < month.end }
             .sorted { $0.date > $1.date }
-        let cash = Ledger.totalCash(accounts: accounts.map(\.snapshot), movements: snapshots)
+        let cash = Ledger.totalCash(accounts: accounts.map(\.snapshot), movements: snapshots,
+                                    checkpoints: checkpoints.map(\.snapshot))
         let history = lastSixMonths(snapshots: snapshots, reference: reference, calendar: calendar, savings: savings)
 
         NavigationStack {
@@ -64,7 +68,19 @@ struct StatsView: View {
                 } header: {
                     Text("Tu plata hoy")
                 } footer: {
-                    Text("Suma el saldo de tus cuentas de ahorros con todos los movimientos cargados. Si no coincide con el banco, abre la cuenta en Ajustes › Cuentas y usa «Cuadrar con el banco».")
+                    Text("Parte del último saldo que te dio el banco en cada cuenta y suma los movimientos posteriores. Toca una cuenta en Inicio para ver qué tan confiable es y cuadrarla.")
+                }
+
+                if !sources.isEmpty {
+                    Section {
+                        ForEach(sources, id: \.name) { item in
+                            row(item.name, item.amount, color: .green, detail: percent(item.amount, of: summary.income))
+                        }
+                    } header: {
+                        Text("¿De dónde viene tu plata?")
+                    } footer: {
+                        Text("Ingresos por persona u origen. No cuenta reembolsos, traslados entre tus cuentas ni plata de terceros.")
+                    }
                 }
 
                 Section {
@@ -93,6 +109,10 @@ struct StatsView: View {
 
                 Section("Ahorro") {
                     row(summary.saved < 0 ? "Salió de más este mes" : "Ahorro del mes", summary.saved, color: summary.saved < 0 ? .orange : .green)
+                    if thirdParty != 0 {
+                        row("Contando la plata de terceros", summary.saved + thirdParty,
+                            color: summary.saved + thirdParty < 0 ? .orange : .green)
+                    }
                     if pending > 0 {
                         row("Gastos fijos que faltan por pagar", pending, color: .orange)
                         row("Ahorro posible", summary.possibleSaving, color: summary.possibleSaving < 0 ? .red : .green)

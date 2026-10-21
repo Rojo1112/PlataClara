@@ -34,6 +34,12 @@ public struct Fix: Equatable, Sendable, Identifiable {
     public let effect: Int
     public let summary: String
 
+    public init(action: Action, effect: Int, summary: String) {
+        self.action = action
+        self.effect = effect
+        self.summary = summary
+    }
+
     public var id: String {
         switch action {
         case .releaseHold(let id): return "hold-\(id)"
@@ -268,7 +274,8 @@ public enum BalanceAudit {
         return pool.indices.filter { best & (1 << $0) != 0 }.map { pool[$0] }
     }
 
-    static func pocketTransfer(_ amount: Int, date: Date) -> Fix {
+    /// Traslado desde una cajita (monto positivo) o hacia una cajita (negativo).
+    public static func pocketTransfer(_ amount: Int, date: Date) -> Fix {
         Fix(action: .pocketTransfer(amount: amount, date: date), effect: amount,
             summary: amount > 0
                 ? "Fue un traslado de \(Money.format(amount)) desde una cajita"

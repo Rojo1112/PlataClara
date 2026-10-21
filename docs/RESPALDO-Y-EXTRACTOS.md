@@ -24,6 +24,7 @@ Ajustes › **Importar extracto bancario**:
 2. Elige el archivo: PDF descargado del banco (con texto), CSV o TXT. Si el PDF tiene contraseña, la app la pide.
 3. Revisa la lista: cada renglón que empieza con una fecha se interpreta como un movimiento. Los que ya tenías registrados (mismo monto y cuenta, ±1 día) aparecen **desmarcados**.
 4. Pulsa **Importar**. Los movimientos quedan confirmados y cuentan en saldos y estadísticas.
+5. Si el extracto trae el resumen del saldo (como el de Nu), la app revisa que cuadre y guarda el saldo final como **punto de cuadre**. Ver [CUADRE-CON-EL-BANCO.md](CUADRE-CON-EL-BANCO.md).
 
 Cómo se interpreta cada renglón:
 - Fechas `dd/MM/aaaa`, `dd-MM-aaaa`, `aaaa-MM-dd`, `dd/MM` o con el mes en texto (`01 sep`). Sin año, se usa el del período del extracto o el año actual.

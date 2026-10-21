@@ -2,7 +2,8 @@ import SwiftData
 
 enum Persistence {
     static let container: ModelContainer = {
-        let schema = Schema([Account.self, Movement.self, Category.self, RecurringExpense.self, RecurringOccurrence.self])
+        let schema = Schema([Account.self, Movement.self, Category.self, RecurringExpense.self, RecurringOccurrence.self,
+                             BalanceCheckpoint.self])
         do {
             return try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema))
         } catch {

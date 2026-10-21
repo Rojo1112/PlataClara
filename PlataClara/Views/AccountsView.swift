@@ -6,6 +6,7 @@ struct AccountsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Account.createdAt) private var accounts: [Account]
     @Query private var movements: [Movement]
+    @Query private var checkpoints: [BalanceCheckpoint]
     @State private var creating = false
     @State private var editing: Account?
     @State private var blockedDelete = false
@@ -22,7 +23,7 @@ struct AccountsView: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Text(Money.format(Ledger.balance(of: account.snapshot, movements: snapshots)))
+                        Text(Money.format(Ledger.balance(of: account.snapshot, movements: snapshots, checkpoints: checkpoints.map(\.snapshot))))
                             .monospacedDigit()
                             .foregroundStyle(account.kind == .credito ? Color.red : Color.primary)
                     }
@@ -52,7 +53,12 @@ struct AccountsView: View {
         for index in offsets {
             let account = accounts[index]
             let inUse = movements.contains { $0.accountID == account.id || $0.destinationAccountID == account.id }
-            if inUse { blockedDelete = true } else { context.delete(account) }
+            if inUse {
+                blockedDelete = true
+            } else {
+                context.all(BalanceCheckpoint.self).filter { $0.accountID == account.id }.forEach { context.delete($0) }
+                context.delete(account)
+            }
         }
         try? context.save()
     }

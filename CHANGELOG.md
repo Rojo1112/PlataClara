@@ -9,6 +9,20 @@ La versión recomendada para volver atrás si algo falla es la [v0.5.1](https://
 
 ---
 
+## v0.7.0 — Cuadre automático con el banco
+**Qué cambió**
+- El saldo de cada cuenta parte del **último saldo que dio el banco** (punto de cuadre) y suma solo los movimientos posteriores. Sin puntos de cuadre funciona como antes.
+- **Puntos de cuadre** desde el extracto PDF (saldo inicial y final), desde una **captura de la pantalla de inicio** del banco (se lee el saldo en el iPhone) o a mano, con fecha y hora.
+- Al importar un extracto: revisa que **inicio + entró − salió + rendimientos − 4x1000** dé el saldo final, avisa lo que no aparece en la lista y ofrece registrarlo como traslado de una cajita. Los rendimientos, el 4x1000 y los costos del resumen se pueden importar como movimientos.
+- Pantalla de **cuadre de cada cuenta** (toca la cuenta en Inicio): diferencias entre cuadres, saldo que se vuelve negativo, tramos sin movimientos y combinaciones de retenciones, movimientos repetidos o por revisar que explican la diferencia exacta. Ningún arreglo se aplica sin confirmar.
+- **Nivel de confianza** del saldo en Inicio: verificado, alta, media o baja, con la fecha del último cuadre y lo que falta explicar.
+- **Cajitas** como parte de la cuenta Nu, con el desglose en Inicio.
+- Estadísticas: **¿De dónde viene tu plata?** (ingresos por persona u origen) y el ahorro **contando la plata de terceros**.
+- «Cuadrar con el banco» en la cuenta ya no cambia el saldo inicial: guarda un punto de cuadre.
+- El respaldo guarda los puntos de cuadre; los respaldos anteriores se siguen leyendo.
+
+**Comprobado**: 🧪 pruebas del cuadre con datos de ejemplo. Falta probar en iPhone, sobre todo el lector de la captura de inicio, que se ajustó sin una captura real.
+
 ## v0.6.0 — Nueva marca: ícono, color y portada
 **Qué cambió**
 - **Ícono nuevo:** una P hecha con una moneda, en tres versiones que iOS elige solo: predeterminado (verde), modo oscuro y tintado.
