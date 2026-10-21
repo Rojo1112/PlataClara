@@ -13,13 +13,16 @@ public struct AccountDTO: Codable, Equatable, Sendable {
     public var walletCardName: String?
     public var emailSenders: [String]
     public var createdAt: Date
+    /// Cuenta a la que pertenece (las cajitas de Nu dentro de la cuenta Nu). Falta en respaldos anteriores a la v0.7.0.
+    public var parentAccountID: UUID?
 
     public init(id: UUID, name: String, bank: Bank, kind: AccountKind, openingBalance: Int, creditLimit: Int?,
                 cutoffDay: Int?, paymentDay: Int?, last4: [String], walletCardName: String?, emailSenders: [String],
-                createdAt: Date) {
+                createdAt: Date, parentAccountID: UUID? = nil) {
         self.id = id; self.name = name; self.bank = bank; self.kind = kind; self.openingBalance = openingBalance
         self.creditLimit = creditLimit; self.cutoffDay = cutoffDay; self.paymentDay = paymentDay; self.last4 = last4
         self.walletCardName = walletCardName; self.emailSenders = emailSenders; self.createdAt = createdAt
+        self.parentAccountID = parentAccountID
     }
 }
 
@@ -95,6 +98,18 @@ public struct OccurrenceDTO: Codable, Equatable, Sendable {
     }
 }
 
+public struct CheckpointDTO: Codable, Equatable, Sendable {
+    public var id: UUID
+    public var accountID: UUID
+    public var date: Date
+    public var balance: Int
+    public var source: CheckpointSource
+
+    public init(id: UUID, accountID: UUID, date: Date, balance: Int, source: CheckpointSource) {
+        self.id = id; self.accountID = accountID; self.date = date; self.balance = balance; self.source = source
+    }
+}
+
 public struct BackupFile: Codable, Equatable, Sendable {
     public static let currentVersion = 1
 
@@ -105,11 +120,15 @@ public struct BackupFile: Codable, Equatable, Sendable {
     public var movements: [MovementDTO]
     public var recurring: [RecurringDTO]
     public var occurrences: [OccurrenceDTO]
+    /// Puntos de cuadre con el banco. Opcional: los respaldos anteriores a la v0.7.0 no lo traen.
+    public var checkpoints: [CheckpointDTO]?
 
     public init(formatVersion: Int = BackupFile.currentVersion, exportedAt: Date, accounts: [AccountDTO],
-                categories: [CategoryDTO], movements: [MovementDTO], recurring: [RecurringDTO], occurrences: [OccurrenceDTO]) {
+                categories: [CategoryDTO], movements: [MovementDTO], recurring: [RecurringDTO], occurrences: [OccurrenceDTO],
+                checkpoints: [CheckpointDTO]? = nil) {
         self.formatVersion = formatVersion; self.exportedAt = exportedAt; self.accounts = accounts
         self.categories = categories; self.movements = movements; self.recurring = recurring; self.occurrences = occurrences
+        self.checkpoints = checkpoints
     }
 }
 

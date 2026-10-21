@@ -100,6 +100,39 @@ public enum Stats {
             .prefix(limit).map { $0 }
     }
 
+    /// De dónde viene la plata: ingresos reales del mes por persona u origen, de mayor a menor.
+    /// No incluye reembolsos, traslados entre tus cuentas ni plata de terceros.
+    public static func incomeBySource(movements: [MovementSnapshot], in interval: DateInterval, limit: Int = 8) -> [CategoryTotal] {
+        let incomes = confirmed(movements, in: interval).filter { $0.kind == .ingreso && !$0.isRefund }
+        let grouped = Dictionary(grouping: incomes) { sourceName($0.merchant ?? $0.categoryName) }
+        return grouped
+            .map { CategoryTotal(name: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.amount != $1.amount ? $0.amount > $1.amount : $0.name < $1.name }
+            .prefix(limit).map { $0 }
+    }
+
+    static let incomePrefixes = ["recibiste de", "te enviaron", "te envió", "te transfirió", "transferencia de", "te pagó"]
+
+    /// «Recibiste de ANA PÉREZ» → «ANA PÉREZ».
+    static func sourceName(_ text: String?) -> String {
+        var name = (text ?? "").split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        for prefix in incomePrefixes {
+            if let range = name.range(of: prefix, options: [.caseInsensitive, .diacriticInsensitive, .anchored]) {
+                name = String(name[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+                break
+            }
+        }
+        return name.isEmpty ? uncategorized : name
+    }
+
+    /// Lo que dejó en tu cuenta la plata de terceros en el mes: lo que te dieron menos lo que pagaste por ellos.
+    /// Las estadísticas no la cuentan; sirve para ver el resultado «con todo», como lo ve el banco.
+    public static func thirdPartyNet(movements: [MovementSnapshot], in interval: DateInterval) -> Int {
+        movements
+            .filter { $0.status == .confirmado && $0.isExternal && $0.date >= interval.start && $0.date < interval.end }
+            .reduce(0) { $0 + ($1.kind == .ingreso ? $1.amount : -$1.amount) }
+    }
+
     public static func expensesByCategory(movements: [MovementSnapshot], in interval: DateInterval) -> [CategoryTotal] {
         let grouped = Dictionary(grouping: expenses(movements, in: interval)) { $0.categoryName ?? uncategorized }
         return grouped

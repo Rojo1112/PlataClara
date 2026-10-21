@@ -85,3 +85,16 @@ public enum OccurrenceStatus: String, Codable, CaseIterable, Sendable, Identifia
         }
     }
 }
+
+/// De dónde salió un punto de cuadre.
+public enum CheckpointSource: String, Codable, CaseIterable, Sendable, Identifiable {
+    case extracto, captura, manual
+    public var id: String { rawValue }
+    public var displayName: String {
+        switch self {
+        case .extracto: return "Extracto"
+        case .captura: return "Captura de inicio"
+        case .manual: return "A mano"
+        }
+    }
+}

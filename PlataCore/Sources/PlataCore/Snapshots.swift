@@ -27,10 +27,13 @@ public struct MovementSnapshot: Equatable, Sendable {
     public let merchant: String?
     /// Plata de un tercero: cuenta en el saldo pero no en gastos ni ingresos.
     public let isExternal: Bool
+    /// Retención pendiente (el reloj de Nu): puede liberarse y entonces no fue un gasto.
+    public let isHold: Bool
 
     public init(id: UUID = UUID(), amount: Int, date: Date, kind: MovementKind, method: PaymentMethod,
                 accountID: UUID?, destinationAccountID: UUID? = nil, categoryName: String? = nil,
-                status: MovementStatus = .confirmado, isRefund: Bool = false, merchant: String? = nil, isExternal: Bool = false) {
+                status: MovementStatus = .confirmado, isRefund: Bool = false, merchant: String? = nil, isExternal: Bool = false,
+                isHold: Bool = false) {
         self.id = id
         self.amount = amount
         self.date = date
@@ -43,5 +46,23 @@ public struct MovementSnapshot: Equatable, Sendable {
         self.isRefund = isRefund
         self.merchant = merchant
         self.isExternal = isExternal
+        self.isHold = isHold
+    }
+}
+
+/// Punto de cuadre: el saldo que mostró el banco en una fecha y hora. En tarjetas de crédito es la deuda.
+public struct CheckpointSnapshot: Equatable, Sendable {
+    public let id: UUID
+    public let accountID: UUID
+    public let date: Date
+    public let balance: Int
+    public let source: CheckpointSource
+
+    public init(id: UUID = UUID(), accountID: UUID, date: Date, balance: Int, source: CheckpointSource) {
+        self.id = id
+        self.accountID = accountID
+        self.date = date
+        self.balance = balance
+        self.source = source
     }
 }
