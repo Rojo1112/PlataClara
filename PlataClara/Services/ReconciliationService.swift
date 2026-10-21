@@ -34,11 +34,11 @@ enum ReconciliationService {
             try? context.save()
             MovementStore.didConfirm(movement, context: context)
         case .pocketTransfer(let amount, let date):
-            let pockets = pockets(of: account, context: context)
+            let pocketAccount = pockets(of: account, context: context)
             let fromPockets = amount > 0
             let movement = Movement(amount: abs(amount), date: date, kind: .transferencia, method: .transferencia,
-                                    accountID: fromPockets ? pockets.id : account.id, source: .manual, status: .confirmado)
-            movement.destinationAccountID = fromPockets ? account.id : pockets.id
+                                    accountID: fromPockets ? pocketAccount.id : account.id, source: .manual, status: .confirmado)
+            movement.destinationAccountID = fromPockets ? account.id : pocketAccount.id
             movement.merchant = fromPockets ? "Traslado desde cajitas" : "Traslado a cajitas"
             context.insert(movement)
             try? context.save()
