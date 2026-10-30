@@ -40,6 +40,17 @@ struct StatementImportView: View {
     @State private var summaryEntries = 0
     @State private var saveCheckpoints = true
     @State private var registerPocketTransfer = false
+    /// Renglones cuya fecha cortó la captura: se agregan solo si la persona dice que sí, con la fecha que elija.
+    @State private var addedCut: Set<Int> = []
+    @State private var discardedCut: Set<Int> = []
+    @State private var dateOverride: [Int: Date] = [:]
+    /// Saldo leído de la captura de la pantalla de inicio del banco, para guardarlo como punto de cuadre.
+    @State private var homeBalance: HomeBalance?
+    @State private var homeText = ""
+    @State private var homeAccount = 0
+    @State private var homePockets = 0
+    @State private var homeDate = Date.now
+    @State private var saveHomeBalance = true
 
     var body: some View {
         List {
@@ -63,7 +74,7 @@ struct StatementImportView: View {
                 }
                 .disabled(accountID == nil || readingImage)
             } footer: {
-                Text("Elige las capturas que quieras, sin límite, de la lista de movimientos de la app del banco. Se leen en tu iPhone. Lo tachado o con reloj en la app del banco no se distingue: desmarca esos antes de importar.")
+                Text("Elige las capturas que quieras, sin límite, de la lista de movimientos de la app del banco. Se leen en tu iPhone. Incluye la de la pantalla de inicio para guardar el saldo del banco, y baja un poco menos de una pantalla entre captura y captura para que la última fila se repita arriba. Lo tachado o con reloj en la app del banco no se distingue: desmarca esos antes de importar.")
             }
 
             if needsPassword {
@@ -115,6 +126,14 @@ struct StatementImportView: View {
                 }
             }
 
+            if fromScreenshots, homeBalance != nil {
+                homeBalanceSection
+            }
+
+            if !cutIndices.isEmpty {
+                cutRowsSection
+            }
+
             if !entries.isEmpty {
                 Section {
                     LabeledContent("Ingresos", value: Money.format(selectedIncome(refunds: false)))
@@ -144,20 +163,23 @@ struct StatementImportView: View {
                     Button("Importar \(selected.count) movimientos", action: importSelected)
                         .disabled(selected.isEmpty)
                     Menu {
-                        Button("Solo lo nuevo") { selected = Set(entries.indices).subtracting(duplicates) }
+                        Button("Solo lo nuevo") { selected = Set(entries.indices).subtracting(duplicates).subtracting(cutIndices.subtracting(addedCut)) }
                         Button("Todos") { selected = Set(entries.indices) }
                         Button("Ninguno") { selected = [] }
                     } label: {
                         Label("Qué seleccionar", systemImage: "checklist")
                     }
                 } footer: {
-                    if !duplicates.isEmpty {
-                        Text("\(duplicates.count) ya estaban registrados: no se repiten, solo se completan con los datos del banco.")
+                    let pending = cutIndices.subtracting(addedCut).subtracting(discardedCut).count
+                    if !duplicates.isEmpty || pending > 0 {
+                        Text([duplicates.isEmpty ? nil : "\(duplicates.count) ya estaban registrados: no se repiten, solo se completan con los datos del banco.",
+                              pending == 0 ? nil : "\(pending) con la fecha cortada siguen sin decidir: no se importan si no los agregas."]
+                            .compactMap { $0 }.joined(separator: " "))
                     }
                 }
 
                 Section("Movimientos encontrados (\(selected.count) de \(entries.count) seleccionados)") {
-                    ForEach(entries.indices, id: \.self) { index in
+                    ForEach(entries.indices.filter { !entries[$0].dateIsApproximate }, id: \.self) { index in
                         row(index)
                     }
                 }
@@ -175,6 +197,66 @@ struct StatementImportView: View {
 
     /// Tipo final del renglón: el que lee la app o el que cambió el usuario en el menú.
     private func kind(_ index: Int) -> MovementKind { kindOverride[index] ?? entries[index].kind }
+
+    /// Renglones cuya fecha cortó la captura y ninguna otra muestra.
+    private var cutIndices: Set<Int> { Set(entries.indices.filter { entries[$0].dateIsApproximate }) }
+
+    /// Pregunta por cada movimiento con la fecha cortada: agregarlo, con la fecha que se elija, o descartarlo.
+    private var cutRowsSection: some View {
+        Section {
+            ForEach(cutIndices.sorted(), id: \.self) { index in
+                let entry = entries[index]
+                let added = addedCut.contains(index)
+                let discarded = discardedCut.contains(index)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(entry.description).lineLimit(2)
+                        Spacer()
+                        Text((kind(index) == .ingreso || isPocket(index, .fromPocket) ? "+" : "-") + Money.format(entry.amount))
+                            .monospacedDigit()
+                    }
+                    if added {
+                        DatePicker("Fecha", selection: Binding(get: { dateOverride[index] ?? entry.date },
+                                                               set: { dateOverride[index] = $0 }))
+                    } else {
+                        Text(discarded ? "Descartado" : "Fecha cortada · cerca de \(entry.date.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Button("Agregar") {
+                            addedCut.insert(index); discardedCut.remove(index); selected.insert(index)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(added)
+                        Button("Descartar", role: .destructive) {
+                            discardedCut.insert(index); addedCut.remove(index); selected.remove(index)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(discarded)
+                    }
+                }
+            }
+        } header: {
+            Text("Con la fecha cortada (\(cutIndices.count))")
+        } footer: {
+            Text("La captura cortó la fecha de estos movimientos y ninguna otra la muestra. Búscalos en la app del banco: si están, agrégalos y ajusta la fecha (se propone la del movimiento de arriba); si no, descártalos.")
+        }
+    }
+
+    /// Saldo de la captura de la pantalla de inicio: guardado como punto de cuadre, el saldo de la cuenta parte de lo
+    /// que dice el banco aunque falte algún movimiento o el saldo inicial no sea exacto.
+    private var homeBalanceSection: some View {
+        Section {
+            if homeBalance?.account != nil { AmountField(title: "Saldo de la cuenta", value: $homeAccount) }
+            if homeBalance?.pockets != nil { AmountField(title: "En cajitas", value: $homePockets) }
+            DatePicker("Hora de la captura", selection: $homeDate)
+            Toggle("Guardarlo como punto de cuadre", isOn: $saveHomeBalance)
+        } header: {
+            Text("Saldo del banco en la captura de inicio")
+        } footer: {
+            Text("Revisa el saldo y la hora. Guardarlo hace que el saldo de la cuenta parta de lo que dice el banco, aunque falte algún movimiento o el saldo inicial no sea exacto.")
+        }
+    }
 
     private func total(of kind: MovementKind) -> Int {
         selected.reduce(0) { $0 + (self.kind($1) == kind ? entries[$1].amount : 0) }
@@ -444,13 +526,17 @@ struct StatementImportView: View {
         screenshotProgress = (0, items.count)
         Task {
             var texts: [String] = []
+            var home: String?
             // Una a la vez: con muchas capturas no se cargan todas las imágenes en memoria juntas.
             for (index, item) in items.enumerated() {
                 screenshotProgress = (index, items.count)
                 if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                    texts.append(await StatementTextExtractor.ocrText(of: image))
+                    let text = await StatementTextExtractor.ocrText(of: image)
+                    if home == nil, HomeBalanceParser.isHomeScreen(text) { home = text }
+                    texts.append(text)
                 }
             }
+            homeText = home ?? ""
             photos = []
             screenshotProgress = nil
             readingImage = false
@@ -488,10 +574,28 @@ struct StatementImportView: View {
         categoryOverride = [:]
         holdFlags = []
         thirdPartyFlags = []
-        selected = Set(entries.indices).subtracting(duplicates)
+        addedCut = []
+        discardedCut = []
+        dateOverride = [:]
+        // Lo de fecha cortada empieza sin marcar: se agrega solo si la persona dice que sí.
+        selected = Set(entries.indices).subtracting(duplicates).subtracting(cutIndices)
+        readHomeBalance(screenshots: screenshots)
         if entries.isEmpty && announceEmpty {
             message = "No encontré movimientos. Cada uno debe tener fecha, descripción y monto. Descarga el extracto desde la app del banco (PDF, CSV o TXT) y vuelve a intentarlo."
         }
+    }
+
+    /// Saldo de la captura de inicio, si venía entre las capturas, con la hora en que se tomó.
+    private func readHomeBalance(screenshots: Bool) {
+        guard screenshots, !homeText.isEmpty, let found = HomeBalanceParser.parse(text: homeText) else {
+            homeBalance = nil
+            return
+        }
+        homeBalance = found
+        homeAccount = found.account ?? 0
+        homePockets = found.pockets ?? 0
+        homeDate = HomeBalanceParser.captureDate(text: homeText, after: entries.map(\.date).max() ?? .now, calendar: .gregoriano)
+        saveHomeBalance = true
     }
 
     private func importSelected() {
@@ -509,7 +613,7 @@ struct StatementImportView: View {
             case .ingreso, .transferencia: method = .transferencia
             case .gasto: method = account.kind == .credito ? .credito : .debito
             }
-            let movement = Movement(amount: entry.amount, date: entry.date, kind: finalKind, method: method,
+            let movement = Movement(amount: entry.amount, date: dateOverride[index] ?? entry.date, kind: finalKind, method: method,
                                     accountID: account.id, source: .extracto, status: .confirmado)
             movement.merchant = entry.description.isEmpty ? nil : entry.description
             if let direction = entry.pocket, finalKind == .transferencia, ReconciliationService.allowsPockets(account) {
@@ -555,9 +659,23 @@ struct StatementImportView: View {
         try? context.save()
         created.forEach { MovementStore.didConfirm($0, context: context) }
         if !fromScreenshots { saveStatementCheckpoints(for: account) }
+        // El saldo de la captura de inicio queda como punto de cuadre: el saldo de la cuenta parte de lo que dice el banco.
+        var savedHome = false
+        if fromScreenshots, saveHomeBalance, let home = homeBalance {
+            if home.account != nil {
+                ReconciliationService.addCheckpoint(accountID: account.id, balance: homeAccount, date: homeDate, source: .captura, context: context)
+                savedHome = true
+            }
+            if home.pockets != nil, ReconciliationService.allowsPockets(account) {
+                let pockets = pocketsAccount ?? ReconciliationService.pockets(of: account, context: context)
+                ReconciliationService.addCheckpoint(accountID: pockets.id, balance: homePockets, date: homeDate, source: .captura, context: context)
+                savedHome = true
+            }
+        }
         let alreadyThere = matches.count
         message = "Importados \(selected.count) movimientos nuevos."
             + (alreadyThere > 0 ? " \(alreadyThere) ya estaban registrados y no se repitieron" + (completed > 0 ? " (\(completed) se completaron con los datos del banco)." : ".") : "")
+            + (savedHome ? " El saldo del banco de la captura de inicio quedó como punto de cuadre." : "")
         entries = []
         selected = []
         duplicates = []
@@ -566,6 +684,11 @@ struct StatementImportView: View {
         categoryOverride = [:]
         holdFlags = []
         thirdPartyFlags = []
+        addedCut = []
+        discardedCut = []
+        dateOverride = [:]
+        homeBalance = nil
+        homeText = ""
         rawText = ""
         summary = StatementSummary()
         summaryEntries = 0

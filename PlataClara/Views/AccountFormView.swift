@@ -5,12 +5,17 @@ import PlataCore
 struct AccountFormView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Query private var movements: [Movement]
+    @Query private var checkpoints: [BalanceCheckpoint]
     let account: Account?
 
     @State private var name: String
     @State private var bank: Bank
     @State private var kind: AccountKind
+    /// Lo que la persona escribe como saldo (o deuda) de hoy.
     @State private var openingBalance: Int
+    /// Saldo que calculaba la app al abrir el formulario de una cuenta existente: si cambia, se guarda un punto de cuadre.
+    @State private var currentBalance: Int?
     @State private var creditLimit: Int
     @State private var cutoffDay: Int
     @State private var paymentDay: Int
@@ -64,11 +69,10 @@ struct AccountFormView: View {
                 } header: {
                     Text("Cuenta")
                 } footer: {
-                    if account == nil {
-                        Text(kind == .credito
-                             ? "Pon lo que debes hoy en la tarjeta, no el cupo."
-                             : "Pon lo que tienes hoy en la cuenta. Si vas a importar el extracto de un mes completo, pon el saldo con el que empezó ese mes (lo dice el extracto).")
-                    }
+                    Text((kind == .credito ? "Pon lo que debes hoy en la tarjeta, no el cupo. " : "Pon lo que tienes hoy en la cuenta, como lo muestra el banco. ")
+                         + (account == nil
+                            ? "Se guarda con la hora de ahora: los movimientos anteriores que importes después no lo cambian."
+                            : "Si lo cambias, se guarda como punto de cuadre con la hora de ahora: el saldo parte de ahí y suma solo lo posterior."))
                 }
                 if kind == .credito {
                     Section("Tarjeta de crédito") {
@@ -104,6 +108,14 @@ struct AccountFormView: View {
                 }
             }
             .navigationTitle(account == nil ? "Nueva cuenta" : "Editar cuenta")
+            .onAppear {
+                // En una cuenta existente el campo muestra el saldo de hoy, no el saldo inicial guardado.
+                guard let account, currentBalance == nil else { return }
+                let today = Ledger.balance(of: account.snapshot, movements: movements.map { $0.snapshot(categoryName: nil) },
+                                           checkpoints: checkpoints.map(\.snapshot))
+                currentBalance = today
+                openingBalance = today
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -135,7 +147,12 @@ struct AccountFormView: View {
         target.name = name.trimmingCharacters(in: .whitespaces)
         target.bank = bank
         target.kind = kind
-        target.openingBalance = openingBalance
+        // El saldo escrito es el de hoy. En una cuenta nueva también es el inicial; en una existente el inicial no se toca
+        // (es lo que había antes de todos sus movimientos) y el cambio queda como punto de cuadre.
+        if account == nil {
+            target.openingBalance = openingBalance
+        }
+        let changed = account == nil ? openingBalance != 0 : openingBalance != currentBalance
         target.creditLimit = kind == .credito ? creditLimit : nil
         target.cutoffDay = kind == .credito ? cutoffDay : nil
         target.paymentDay = kind == .credito ? paymentDay : nil
@@ -144,6 +161,9 @@ struct AccountFormView: View {
         target.walletCardName = wallet.isEmpty ? nil : wallet
         target.emailSenders = Account.splitList(emailSenders)
         try? context.save()
+        if changed {
+            ReconciliationService.addCheckpoint(accountID: target.id, balance: openingBalance, date: .now, source: .manual, context: context)
+        }
         dismiss()
     }
 }

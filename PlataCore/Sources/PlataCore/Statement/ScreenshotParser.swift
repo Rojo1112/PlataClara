@@ -30,11 +30,15 @@ public enum ScreenshotParser {
         var sign: Character?
         /// La fila pendiente viene de la captura anterior (quedó partida en el borde).
         var carried = false
+        /// Lo que se leyó de esa fila antes del corte: lo de arriba de la captura siguiente puede ser otra cosa.
+        var carriedDesc: [String] = []
+        /// Fecha de la última fila leída: la de arriba de una fila partida.
+        var lastDate: Date?
 
-        func flush(_ date: Date?) {
-            defer { desc = []; value = nil; sign = nil; carried = false }
+        func flush(_ date: Date?, approximate: Bool = false) {
+            defer { desc = []; value = nil; sign = nil; carried = false; carriedDesc = [] }
             guard let amountValue = value, amountValue > 0 else { return }
-            let description = clean(desc.joined(separator: " "))
+            let description = clean((approximate ? carriedDesc : desc).joined(separator: " "))
             guard !description.isEmpty else { return }
             // Sin hora propia ni encabezado de día es una fila cortada al borde de la captura: se descarta.
             guard date != nil || day != nil else { return }
@@ -42,7 +46,17 @@ public enum ScreenshotParser {
             let pocket = MovementClassifier.pocketDirection(description, sign: sign)
             pages[pages.count - 1].append(StatementEntry(date: when, description: description, amount: amountValue,
                                                          kind: pocket != nil ? .transferencia : kind(of: description, sign: sign),
-                                                         balance: nil, hasTime: date != nil, pocket: pocket))
+                                                         balance: nil, hasTime: date != nil && !approximate, pocket: pocket,
+                                                         dateIsApproximate: approximate))
+            lastDate = when
+        }
+
+        /// Una fila con monto y sin fecha que ninguna captura completa: no se descarta, queda con la fecha de la fila
+        /// de arriba para que la persona decida. Sin fila de arriba no hay fecha que proponer y se descarta.
+        func flushCut() {
+            // Las últimas líneas con números son los restos de la fecha cortada («NO ant 99.N£»), no parte del nombre.
+            while carriedDesc.count > 1, carriedDesc.last?.contains(where: \.isNumber) == true { carriedDesc.removeLast() }
+            if day == nil, let above = lastDate { flush(above, approximate: true) } else { flush(nil) }
         }
 
         for raw in text.components(separatedBy: .newlines) {
@@ -50,8 +64,9 @@ public enum ScreenshotParser {
             if line.isEmpty { continue }
             if line == pageBreak {
                 // Una fila con monto pero sin fecha al final de la captura quedó partida: si la siguiente captura
-                // empieza con su fecha, se completa; si empieza con un monto, la fila se repite entera y esta se descarta.
-                if value == nil || day != nil { flush(nil) } else { carried = true }
+                // empieza con su fecha, se completa; si empieza con la misma fila entera, esta se descarta; si empieza
+                // con otra, la fecha se perdió y la fila queda por confirmar.
+                if value == nil || day != nil { flush(nil) } else { carried = true; carriedDesc = desc }
                 pre = nil
                 pages.append([])
                 continue
@@ -79,14 +94,18 @@ public enum ScreenshotParser {
 
             let ns = withoutInstallments as NSString
             if let match = amount.firstMatch(in: withoutInstallments, range: NSRange(location: 0, length: ns.length)) {
-                if value != nil { flush(nil) }
                 let digits = ns.substring(with: match.range(at: 2)).filter { $0.isNumber }
                 guard let parsed = Int(digits) else { continue }
                 // Los montos se guardan en pesos: los centavos se redondean (0,87 → 1), no se cortan.
                 let cents = match.range(at: 3).location == NSNotFound ? 0 : Int(ns.substring(with: match.range(at: 3))) ?? 0
                 let signText = match.range(at: 1).location == NSNotFound ? nil : ns.substring(with: match.range(at: 1))
-                sign = signText.map { $0 == "+" ? Character("+") : Character("-") }
-                value = parsed + (cents >= 50 ? 1 : 0)
+                let newSign = signText.map { $0 == "+" ? Character("+") : Character("-") }
+                let newValue = parsed + (cents >= 50 ? 1 : 0)
+                if value != nil {
+                    if carried && (newValue != value || newSign != sign) { flushCut() } else { flush(nil) }
+                }
+                sign = newSign
+                value = newValue
                 let rest = ns.replacingCharacters(in: match.range, with: "").trimmingCharacters(in: CharacterSet(charactersIn: " -|·"))
                 if desc.isEmpty, let previous = pre, TextNormalizer.fold(previous).contains("gracias") { desc.append(previous) }
                 pre = nil
@@ -95,7 +114,12 @@ public enum ScreenshotParser {
             }
             if value != nil { desc.append(withoutInstallments) } else { pre = withoutInstallments }
         }
-        flush(nil)
+        if carried { flushCut() } else if value != nil, day == nil {
+            carriedDesc = desc
+            flushCut()
+        } else {
+            flush(nil)
+        }
         return merge(pages)
     }
 
@@ -106,7 +130,10 @@ public enum ScreenshotParser {
     /// Una fila que el OCR se salte en una de las capturas no basta para duplicar: las cercanas siguen coincidiendo.
     static func merge(_ pages: [[StatementEntry]]) -> [StatementEntry] {
         struct Context { let below: String?; let nearby: Set<String> }
-        func key(_ entry: StatementEntry) -> String { "\(entry.date.timeIntervalSince1970)|\(entry.amount)|\(entry.kind.rawValue)" }
+        // Una fila con fecha aproximada lleva la de la fila de arriba: no debe confundirse con ella.
+        func key(_ entry: StatementEntry) -> String {
+            "\(entry.dateIsApproximate ? "~" : "")\(entry.date.timeIntervalSince1970)|\(entry.amount)|\(entry.kind.rawValue)"
+        }
         func isSame(_ a: Context, _ b: Context) -> Bool {
             !a.nearby.isDisjoint(with: b.nearby) || a.below == nil || b.below == nil || a.below == b.below
         }

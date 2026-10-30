@@ -10,9 +10,12 @@ public struct StatementEntry: Equatable, Sendable {
     public let hasTime: Bool
     /// Si es plata que se guarda en una cajita o se saca de ella; entonces `kind` es `.transferencia`.
     public let pocket: PocketDirection?
+    /// La captura cortó la fecha y ninguna otra la muestra: `date` es la de la fila de arriba, y la persona decide
+    /// si el movimiento se agrega (y con qué fecha) o se descarta.
+    public let dateIsApproximate: Bool
 
     public init(date: Date, description: String, amount: Int, kind: MovementKind, balance: Int?, hasTime: Bool = false,
-                pocket: PocketDirection? = nil) {
+                pocket: PocketDirection? = nil, dateIsApproximate: Bool = false) {
         self.date = date
         self.description = description
         self.amount = amount
@@ -20,6 +23,7 @@ public struct StatementEntry: Equatable, Sendable {
         self.balance = balance
         self.hasTime = hasTime
         self.pocket = pocket
+        self.dateIsApproximate = dateIsApproximate
     }
 }
 

@@ -151,6 +151,58 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertEqual(ScreenshotParser.parse(text: text, now: now, calendar: cal).map(\.amount), [1, 4_917])
     }
 
+    func testFilaPartidaQueNingunaCapturaCompletaQuedaPorConfirmar() {
+        // La captura corta el retiro de las 23:06 y la siguiente empieza en otro movimiento: la fecha no se ve en ninguna.
+        let first = """
+        Retiraste dinero de tu +$30.000,00
+        Cajita ahorro moto
+        04 oct - 23:14
+        Retiraste dinero de tu +$30.000,00
+        Cajita ahorro moto
+        NO ant 99.N£
+        """
+        let second = """
+        3:51
+        5G 97
+        Q Buscar movimiento
+        Recibiste de ANA DEMO +$29.500,00
+        04 oct - 21:09 • Bre-B
+        """
+        let entries = ScreenshotParser.parse(text: [first, second].joined(separator: "\n\(ScreenshotParser.pageBreak)\n"),
+                                             now: now, calendar: cal)
+        XCTAssertEqual(entries.map(\.amount), [30_000, 30_000, 29_500])
+        XCTAssertEqual(entries.map(\.dateIsApproximate), [false, true, false])
+        XCTAssertEqual(entries[1].description, "Retiraste dinero de tu Cajita ahorro moto")
+        XCTAssertEqual(entries[1].pocket, .fromPocket)
+        XCTAssertEqual(entries[1].date, entries[0].date)  // se propone la fecha de la fila de arriba
+        XCTAssertFalse(entries[1].hasTime)
+    }
+
+    func testFilaCortadaAlFinalDeLaUltimaCapturaQuedaPorConfirmar() {
+        let entries = ScreenshotParser.parse(text: "UBER RIDES -$4.000,00\n04 oct - 10:00\nNOVAVENTA -$2.000,00",
+                                             now: now, calendar: cal)
+        XCTAssertEqual(entries.map(\.amount), [4_000, 2_000])
+        XCTAssertEqual(entries.map(\.dateIsApproximate), [false, true])
+    }
+
+    func testPantallaDeInicioYHoraDeLaCaptura() {
+        let home = "12:44\n5G 80\nSaldo disponible\n$63.335,97\nDinero en tus Cajitas\n$ 0,77\nMovimientos\nBuscar movimiento"
+        let list = "12:43\nBuscar movimiento\nRetiraste dinero de tu +$30.500,00\nCajita Mi primera Cajita\n21 oct - 12:29"
+        XCTAssertTrue(HomeBalanceParser.isHomeScreen(home))
+        XCTAssertFalse(HomeBalanceParser.isHomeScreen(list))
+        XCTAssertEqual(HomeBalanceParser.parse(text: home), HomeBalance(account: 63_335, pockets: 0))
+
+        let newest = cal.date(from: DateComponents(year: 2026, month: 10, day: 30, hour: 11, minute: 18))!
+        let at = HomeBalanceParser.captureDate(text: home, after: newest, calendar: cal)
+        XCTAssertEqual(cal.dateComponents([.day, .hour, .minute], from: at), DateComponents(day: 30, hour: 12, minute: 44))
+        // Reloj de 12 horas: «3:51» después de un movimiento de las 15:07 es por la tarde.
+        let afternoon = cal.date(from: DateComponents(year: 2026, month: 10, day: 30, hour: 15, minute: 7))!
+        let pm = HomeBalanceParser.captureDate(text: "3:51\nSaldo disponible\n$50.035,97", after: afternoon, calendar: cal)
+        XCTAssertEqual(cal.dateComponents([.hour, .minute], from: pm), DateComponents(hour: 15, minute: 51))
+        XCTAssertEqual(HomeBalanceParser.captureDate(text: "Saldo disponible", after: newest, calendar: cal),
+                       newest.addingTimeInterval(60))
+    }
+
     func testFechaConCeroEnVezDeO() {
         let entries = ScreenshotParser.parse(text: "UBER RIDES -$3.913,00\n04 0ct- 10:58", now: now, calendar: cal)
         XCTAssertEqual(entries.count, 1)

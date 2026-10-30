@@ -9,6 +9,14 @@ La versión recomendada para volver atrás si algo falla es la [v0.5.1](https://
 
 ---
 
+## Sin publicar — Saldos que parten del banco
+**Qué cambió**
+- **Saldo de la cuenta:** el campo «Saldo actual» ahora sí es el de hoy. En una cuenta nueva se guarda también como punto de cuadre con la hora de ahora, así que los movimientos anteriores que importes después no lo cambian. En una cuenta existente el campo muestra el saldo que calcula la app; si lo cambias, queda como punto de cuadre, sin tocar el saldo inicial. Antes se guardaba como saldo inicial y la app le restaba otra vez todo lo importado.
+- **Importar capturas:** si entre las capturas está la pantalla de inicio de la cuenta («Saldo disponible»), la app lee el saldo y el de las cajitas y ofrece guardarlos como punto de cuadre, con la hora del reloj de la captura (se puede ajustar).
+- **Movimientos con la fecha cortada:** si una captura corta la fecha de la última fila y la siguiente no la repite, la app ya no la descarta: la muestra aparte, sin marcar, con la fecha de la fila de arriba, y pregunta si la agregas (ajustando la fecha) o la descartas.
+
+**Comprobado**: 🧪 pruebas de `PlataCore` (120) y las 43 capturas de Nu leídas con OCR en Linux: detecta los 2 movimientos de fecha cortada (−$10.000 y +$30.000) y, con el saldo de la captura de inicio como punto de cuadre, Ahorro Nu da $63.335 y Cajitas $0 aunque el saldo inicial esté mal. Las pantallas no se han compilado aquí (falta Xcode) ni probado en iPhone.
+
 ## v0.7.2 — Cajitas como ahorro y capturas más confiables
 **Qué cambió**
 - **Cajitas:** «Agregaste dinero a tu Cajita» y «Retiraste dinero de tu Cajita» se importan como **traslado** entre la cuenta y sus cajitas, no como gasto ni ingreso. Ya no inflan «Te entró» ni «Te salió» ni aparecen como fuente de ingresos o mayor gasto. Lo que se gasta con plata sacada de una cajita sí cuenta como gasto.

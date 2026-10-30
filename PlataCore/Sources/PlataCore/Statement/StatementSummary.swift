@@ -108,6 +108,35 @@ public enum HomeBalanceParser {
     static let pocketLabels = ["dinero en tus cajitas", "en tus cajitas", "cajitas", "cajita"]
     private static let amount = try! NSRegularExpression(pattern: #"\$\s?(\d{1,3}(?:[.,]\d{3})+|\d+)(?:,\d{1,2})?"#)
 
+    static let homeScreenLabels = ["saldo disponible", "dinero disponible", "dinero en tu cuenta"]
+    private static let clock = try! NSRegularExpression(pattern: #"^\s*(\d{1,2}):(\d{2})\b"#)
+
+    /// true si la captura es la pantalla de inicio de la cuenta (con su saldo), no una lista de movimientos.
+    /// Solo cuentan rótulos inequívocos: una fila como «Retiraste dinero de tu Cajita» no es un saldo.
+    public static func isHomeScreen(_ text: String) -> Bool {
+        let folded = TextNormalizer.fold(text)
+        return homeScreenLabels.contains { folded.contains($0) }
+    }
+
+    /// Cuándo se tomó la captura de inicio: la hora del reloj del teléfono (la primera hora suelta del texto), el día
+    /// del movimiento más reciente. El reloj puede estar en formato de 12 horas («3:51» por la tarde): se toma la
+    /// hora que quede después de ese movimiento. Si no se lee el reloj, un minuto después del movimiento.
+    public static func captureDate(text: String, after newest: Date, calendar: Calendar) -> Date {
+        let fallback = newest.addingTimeInterval(60)
+        for line in text.components(separatedBy: .newlines) {
+            let ns = line as NSString
+            guard let m = clock.firstMatch(in: line, range: NSRange(location: 0, length: ns.length)),
+                  let hour = Int(ns.substring(with: m.range(at: 1))), let minute = Int(ns.substring(with: m.range(at: 2))),
+                  hour < 24, minute < 60 else { continue }
+            let hours = hour < 12 ? [hour, hour + 12] : [hour]
+            for h in hours {
+                if let date = calendar.date(bySettingHour: h, minute: minute, second: 0, of: newest), date >= newest { return date }
+            }
+            return fallback
+        }
+        return fallback
+    }
+
     public static func parse(text: String) -> HomeBalance? {
         let lines = text.components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
