@@ -104,7 +104,7 @@ struct OnboardingView: View {
              text: "Sin tener que escribir cada uno:") {
             VStack(alignment: .leading, spacing: 14) {
                 bullet("doc.text.magnifyingglass", "Extracto en PDF", "Con o sin contraseña. Ajustes › Importar extracto.")
-                bullet("photo.on.rectangle", "Capturas de la app del banco", "Elige hasta 10. Si repites una, no se duplica.")
+                bullet("photo.on.rectangle", "Capturas de la app del banco", "Elige todas las que quieras. Si repites una, no se duplica.")
                 bullet("applewatch.and.arrow.forward", "Apple Pay, QR y envíos", "Con los atajos del siguiente paso.")
                 bullet("square.and.pencil", "A mano", "Siempre disponible con el botón +.")
             }
