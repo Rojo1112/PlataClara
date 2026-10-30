@@ -31,6 +31,8 @@ struct StatementImportView: View {
     @State private var usedOCR = false
     @State private var message: String?
     @State private var photos: [PhotosPickerItem] = []
+    /// Avance al leer capturas, que pueden ser muchas: cuántas van y cuántas son.
+    @State private var screenshotProgress: (read: Int, total: Int)?
     @State private var fromScreenshots = false
     @Query private var checkpoints: [BalanceCheckpoint]
     @State private var summary = StatementSummary()
@@ -56,12 +58,12 @@ struct StatementImportView: View {
             }
 
             Section {
-                PhotosPicker(selection: $photos, maxSelectionCount: 10, matching: .images) {
+                PhotosPicker(selection: $photos, matching: .images) {
                     Label("Leer capturas de pantalla…", systemImage: "photo.on.rectangle")
                 }
                 .disabled(accountID == nil || readingImage)
             } footer: {
-                Text("Elige capturas de la lista de movimientos de la app del banco (hasta 10). Se leen en tu iPhone. Lo tachado o con reloj en la app del banco no se distingue: desmarca esos antes de importar.")
+                Text("Elige las capturas que quieras, sin límite, de la lista de movimientos de la app del banco. Se leen en tu iPhone. Lo tachado o con reloj en la app del banco no se distingue: desmarca esos antes de importar.")
             }
 
             if needsPassword {
@@ -72,7 +74,16 @@ struct StatementImportView: View {
             }
 
             if readingImage {
-                Section { HStack { ProgressView(); Text("  Leyendo la imagen del PDF…") } }
+                Section {
+                    HStack {
+                        ProgressView()
+                        if let progress = screenshotProgress {
+                            Text("  Leyendo captura \(progress.read + 1) de \(progress.total)…")
+                        } else {
+                            Text("  Leyendo la imagen del PDF…")
+                        }
+                    }
+                }
             }
 
             if !entries.isEmpty, let check = totalsCheck {
@@ -416,14 +427,18 @@ struct StatementImportView: View {
     private func readScreenshots(_ items: [PhotosPickerItem]) {
         guard !items.isEmpty, !readingImage else { return }
         readingImage = true
+        screenshotProgress = (0, items.count)
         Task {
             var texts: [String] = []
-            for item in items {
+            // Una a la vez: con muchas capturas no se cargan todas las imágenes en memoria juntas.
+            for (index, item) in items.enumerated() {
+                screenshotProgress = (index, items.count)
                 if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
                     texts.append(await StatementTextExtractor.ocrText(of: image))
                 }
             }
             photos = []
+            screenshotProgress = nil
             readingImage = false
             document = nil
             needsPassword = false
