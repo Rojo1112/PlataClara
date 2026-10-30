@@ -9,12 +9,12 @@ La versión recomendada para volver atrás si algo falla es la [v0.5.1](https://
 
 ---
 
-## Sin publicar — Capturas sin tope
+## v0.7.1 — Capturas sin tope
 **Qué cambió**
 - Al importar capturas de pantalla ya no hay tope de 10: se eligen todas las que quieras de una vez.
 - Mientras las lee muestra el avance («Leyendo captura 3 de 25…»). Se leen una a la vez para no llenar la memoria.
 
-**Comprobado**: 🧪 sin compilar todavía (no hay Xcode en este equipo); la compilación automática lo revisa al subirlo. Falta probar en iPhone con más de 10 capturas.
+**Comprobado**: 🧪 compila y pasa las pruebas. Falta probar en iPhone con más de 10 capturas.
 
 ## v0.7.0 — Cuadre automático con el banco
 **Qué cambió**
