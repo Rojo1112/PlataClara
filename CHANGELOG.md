@@ -9,6 +9,16 @@ La versión recomendada para volver atrás si algo falla es la [v0.5.1](https://
 
 ---
 
+## Sin publicar — Cajitas como ahorro y capturas más confiables
+**Qué cambió**
+- **Cajitas:** «Agregaste dinero a tu Cajita» y «Retiraste dinero de tu Cajita» se importan como **traslado** entre la cuenta y sus cajitas, no como gasto ni ingreso. Ya no inflan «Te entró» ni «Te salió» ni aparecen como fuente de ingresos o mayor gasto. Lo que se gasta con plata sacada de una cajita sí cuenta como gasto.
+- Estadísticas: sección **Ahorro en cajitas** con cuánto guardaste, cuánto sacaste y si crecieron o usaste de lo ahorrado.
+- Capturas: un movimiento **partido entre dos capturas** (monto abajo en una, fecha arriba en la siguiente) ya no se pierde.
+- Capturas: **dos movimientos iguales en el mismo minuto** (por ejemplo dos reembolsos de $4.300) ya no se toman por repetidos.
+- Capturas: los centavos se redondean (un retiro de $0,87 cuenta como $1) y se entiende la fecha cuando el OCR lee «0ct».
+
+**Comprobado**: 🧪 pruebas de `PlataCore` (117) y una prueba con 43 capturas reales de Nu de octubre leídas con OCR en Linux: 297 de 302 movimientos bien (los 5 restantes no los pudo leer el OCR: montos en gris o fechas cortadas), y Estadísticas da «Te entró» igual al real. Las pantallas no se han compilado aquí (falta Xcode) ni se han probado en iPhone.
+
 ## v0.7.1 — Capturas sin tope
 **Qué cambió**
 - Al importar capturas de pantalla ya no hay tope de 10: se eligen todas las que quieras de una vez.

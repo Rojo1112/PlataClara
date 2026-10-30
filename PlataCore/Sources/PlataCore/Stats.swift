@@ -39,6 +39,21 @@ public struct MonthSummary: Equatable, Sendable {
     public var savingsRate: Double { income > 0 ? Double(saved) / Double(income) : 0 }
 }
 
+/// Lo que se movió entre las cuentas y sus cajitas en el mes. No es ingreso ni gasto: la plata sigue siendo tuya.
+public struct PocketFlows: Equatable, Sendable {
+    /// Lo que se guardó en cajitas.
+    public let saved: Int
+    /// Lo que se sacó de cajitas.
+    public let withdrawn: Int
+    /// Positivo: las cajitas crecieron; negativo: se usó plata ahorrada.
+    public var net: Int { saved - withdrawn }
+
+    public init(saved: Int, withdrawn: Int) {
+        self.saved = saved
+        self.withdrawn = withdrawn
+    }
+}
+
 public struct CategoryTotal: Equatable, Sendable {
     public let name: String
     public let amount: Int
@@ -76,6 +91,15 @@ public enum Stats {
         return MonthSummary(income: income, expenses: expenses, pendingFixed: pendingFixed,
                             refunds: min(refunds, spent), cardPayments: cardPayments,
                             unregisteredCardSpending: max(0, cardPayments - creditPurchases))
+    }
+
+    /// Cuánto se guardó en cajitas y cuánto se sacó de ellas en el mes (traslados hacia o desde `pocketAccounts`).
+    /// El resumen del mes ya los deja fuera de lo que entró y salió; esto los muestra aparte.
+    public static func pocketFlows(movements: [MovementSnapshot], in interval: DateInterval, pocketAccounts: Set<UUID>) -> PocketFlows {
+        let transfers = confirmed(movements, in: interval).filter { $0.kind == .transferencia }
+        let saved = transfers.filter { $0.destinationAccountID.map(pocketAccounts.contains) ?? false }.reduce(0) { $0 + $1.amount }
+        let withdrawn = transfers.filter { $0.accountID.map(pocketAccounts.contains) ?? false }.reduce(0) { $0 + $1.amount }
+        return PocketFlows(saved: saved, withdrawn: withdrawn)
     }
 
     /// Gastos del mes agrupados por categoría; si un gasto no tiene, se adivina por su descripción.

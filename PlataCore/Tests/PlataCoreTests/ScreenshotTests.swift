@@ -57,8 +57,104 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testCapturasRepetidasNoDuplican() {
-        let text = "UBER*RIDES -$5.410,00\n05 oct - 11:19\nUBER*RIDES -$5.410,00\n05 oct - 11:19"
+        let text = "UBER*RIDES -$5.410,00\n05 oct - 11:19\n\(ScreenshotParser.pageBreak)\nUBER*RIDES -$5.410,00\n05 oct - 11:19"
         XCTAssertEqual(ScreenshotParser.parse(text: text, now: now, calendar: cal).count, 1)
+    }
+
+    func testCajitasSonTrasladoNoIngresoNiGasto() {
+        let text = """
+        Agregaste dinero a tu -$100.000,00
+        Cajita Mi primera Cajita
+        04 oct - 12:12
+        Retiraste dinero de tu +$309.000,00
+        Cajita ahorro moto
+        03 oct - 19:03
+        LA CAJITA FELIZ -$20.000,00
+        03 oct - 13:00
+        """
+        let entries = ScreenshotParser.parse(text: text, now: now, calendar: cal)
+        XCTAssertEqual(entries.map(\.kind), [.transferencia, .transferencia, .gasto])
+        XCTAssertEqual(entries.map(\.pocket), [.toPocket, .fromPocket, nil])
+        XCTAssertEqual(entries.map(\.amount), [100_000, 309_000, 20_000])
+    }
+
+    func testFilaPartidaEntreDosCapturasSeCompleta() {
+        let first = """
+        Pagaste tu tarjeta -$50.000,00
+        04 oct - 15:17
+        Retiraste dinero de tu +$100.135,00
+        """
+        let second = """
+        12:44
+        5G 80
+        Q Buscar movimiento
+        Cajita Mi primera Cajita
+        04 oct - 15:16
+        Enviaste a CARLOS DEMO -$20.000,00
+        04 oct - 13:22
+        """
+        let entries = ScreenshotParser.parse(text: [first, second].joined(separator: "\n\(ScreenshotParser.pageBreak)\n"),
+                                             now: now, calendar: cal)
+        XCTAssertEqual(entries.map(\.amount), [50_000, 100_135, 20_000])
+        XCTAssertEqual(entries[1].description, "Retiraste dinero de tu Cajita Mi primera Cajita")
+        XCTAssertEqual(entries[1].pocket, .fromPocket)
+        XCTAssertEqual(cal.component(.hour, from: entries[1].date), 15)  // no la hora del reloj del teléfono (12:44)
+        XCTAssertEqual(cal.component(.minute, from: entries[1].date), 16)
+    }
+
+    func testFilaPartidaQueSeRepiteEnteraNoDuplica() {
+        let first = "Pagaste tu tarjeta -$6.000,00\n03 oct - 17:25\nEnviaste a ANA DEMO -$7.000,00"
+        let second = "Enviaste a ANA DEMO -$7.000,00\n03 oct - 18:53 • Bre-B\nNOVAVENTA -$3.500,00\n03 oct - 13:02"
+        let entries = ScreenshotParser.parse(text: [first, second].joined(separator: "\n\(ScreenshotParser.pageBreak)\n"),
+                                             now: now, calendar: cal)
+        XCTAssertEqual(entries.map(\.amount), [6_000, 7_000, 3_500])
+    }
+
+    func testDosMovimientosIgualesEnElMismoMinutoNoSePierden() {
+        // Dos reembolsos de $4.300 a las 11:44, cada uno con su compra; el primero sale en una captura y el segundo en la otra.
+        let first = """
+        PAYU*UBER -$3.915,00
+        04 oct - 18:12
+        Hicimos un reembolso +$4.300,00
+        04 oct - 11:44
+        TIENDA DEMO -$4.300,00
+        04 oct - 11:44
+        """
+        let second = """
+        04 oct - 11:44
+        Hicimos un reembolso +$4.300,00
+        04 oct - 11:44
+        TIENDA DEMO -$4.300,00
+        04 oct - 11:43
+        UBER RIDES -$4.912,00
+        04 oct - 10:02
+        """
+        let entries = ScreenshotParser.parse(text: [first, second].joined(separator: "\n\(ScreenshotParser.pageBreak)\n"),
+                                             now: now, calendar: cal)
+        XCTAssertEqual(entries.count, 6)
+        XCTAssertEqual(entries.filter { $0.kind == .ingreso && $0.amount == 4_300 }.count, 2)
+        XCTAssertEqual(entries.filter { $0.kind == .gasto && $0.amount == 4_300 }.count, 2)
+    }
+
+    func testFilaQueElOcrSeSaltaEnUnaCapturaNoDuplicaLasDemas() {
+        let rows = ["NOVAVENTA -$4.000,00\n04 oct - 14:44", "Hicimos un reembolso +$3.500,00\n04 oct - 14:43",
+                    "NOVAVENTA -$3.500,00\n04 oct - 14:43", "UBER*RIDES -$7.280,00\n04 oct - 11:41"]
+        let first = rows.joined(separator: "\n")
+        let second = [rows[0], rows[2], rows[3]].joined(separator: "\n")  // aquí el OCR no leyó el reembolso
+        let entries = ScreenshotParser.parse(text: [first, second].joined(separator: "\n\(ScreenshotParser.pageBreak)\n"),
+                                             now: now, calendar: cal)
+        XCTAssertEqual(entries.count, 4)
+    }
+
+    func testCentavosSeRedondeanSinPerderMontosPequenos() {
+        let text = "Retiraste dinero de tu Cajita ahorro moto +$0,87\n04 oct - 14:04\nUBER RIDES -$4.916,50\n04 oct - 08:32"
+        XCTAssertEqual(ScreenshotParser.parse(text: text, now: now, calendar: cal).map(\.amount), [1, 4_917])
+    }
+
+    func testFechaConCeroEnVezDeO() {
+        let entries = ScreenshotParser.parse(text: "UBER RIDES -$3.913,00\n04 0ct- 10:58", now: now, calendar: cal)
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(cal.component(.month, from: entries[0].date), 10)
     }
 }
 

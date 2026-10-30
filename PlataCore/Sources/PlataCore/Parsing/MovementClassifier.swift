@@ -7,6 +7,14 @@ public struct Classification: Equatable, Sendable {
     public let explicit: Bool
 }
 
+/// Hacia dónde va la plata que se mueve entre una cuenta y sus cajitas o bolsillos.
+public enum PocketDirection: String, Sendable {
+    /// Se guarda: sale de la cuenta hacia la cajita.
+    case toPocket
+    /// Se saca: vuelve de la cajita a la cuenta.
+    case fromPocket
+}
+
 public enum MovementClassifier {
     static let cardPaymentWords = ["pago a tu tarjeta", "pago de tu tarjeta", "abono a tu tarjeta", "pagaste tu tarjeta",
                                    "a tu tarjeta", "a tu credito", "abonamos"]
@@ -22,6 +30,25 @@ public enum MovementClassifier {
     public static func isRefund(_ text: String) -> Bool {
         let t = TextNormalizer.fold(text)
         return refundWords.contains { t.contains($0) }
+    }
+
+    static let pocketWord = try! NSRegularExpression(pattern: #"\b(?:cajitas?|bolsillos?)\b"#)
+    static let toPocketWords = ["agregaste", "guardaste", "ahorraste", "moviste", "pasaste", "depositaste"]
+    static let fromPocketWords = ["retiraste", "sacaste", "rescataste"]
+
+    /// Plata que se mueve entre la cuenta y una de sus cajitas o bolsillos («Agregaste dinero a tu Cajita…»,
+    /// «Retiraste dinero de tu Cajita…»): sigue siendo tuya, así que es un traslado, no un ingreso ni un gasto.
+    /// Hace falta el verbo para no confundirla con un comercio que se llame «cajita». Con signo (+ vuelve a la
+    /// cuenta, − sale de ella) manda el signo; sin él, el verbo.
+    public static func pocketDirection(_ text: String, sign: Character? = nil) -> PocketDirection? {
+        let t = TextNormalizer.fold(text)
+        guard pocketWord.firstMatch(in: t, range: NSRange(location: 0, length: (t as NSString).length)) != nil else { return nil }
+        let from = fromPocketWords.contains { t.contains($0) }
+        let to = toPocketWords.contains { t.contains($0) }
+        guard from || to else { return nil }
+        if sign == "+" { return .fromPocket }
+        if sign == "-" { return .toPocket }
+        return from ? .fromPocket : .toPocket
     }
 
     public static func classify(_ text: String) -> Classification {

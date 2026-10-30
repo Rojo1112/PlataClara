@@ -146,3 +146,30 @@ final class TagStatsTests: XCTestCase {
         XCTAssertFalse(MovementTag.has(.hold, in: nil))
     }
 }
+
+final class PocketStatsTests: XCTestCase {
+    let nu = UUID()
+    var octubre: DateInterval { Stats.monthInterval(containing: fecha(2026, 10, 15), calendar: bogota) }
+
+    func testCajitasNoCuentanComoIngresoNiGastoPeroSeVenAparte() {
+        let cajitas = UUID()
+        let ms = [
+            MovementSnapshot(amount: 1_000_000, date: fecha(2026, 10, 1), kind: .ingreso, method: .llave, accountID: nu, merchant: "Recibiste de ANA DEMO"),
+            MovementSnapshot(amount: 300_000, date: fecha(2026, 10, 2), kind: .transferencia, method: .transferencia,
+                             accountID: nu, destinationAccountID: cajitas, merchant: "Agregaste dinero a tu Cajita"),
+            MovementSnapshot(amount: 120_000, date: fecha(2026, 10, 9), kind: .transferencia, method: .transferencia,
+                             accountID: cajitas, destinationAccountID: nu, merchant: "Retiraste dinero de tu Cajita"),
+            // La plata que salió de la cajita se gasta: ese gasto sí cuenta.
+            MovementSnapshot(amount: 120_000, date: fecha(2026, 10, 9), kind: .gasto, method: .debito, accountID: nu, merchant: "TIENDA DEMO")
+        ]
+        let s = Stats.summary(movements: ms, in: octubre, pendingFixed: 0, ownSavingsAccounts: [nu, cajitas])
+        XCTAssertEqual(s.totalIn, 1_000_000)
+        XCTAssertEqual(s.totalOut, 120_000)
+        XCTAssertEqual(s.saved, 880_000)
+        XCTAssertEqual(Stats.incomeBySource(movements: ms, in: octubre).map(\.name), ["ANA DEMO"])
+        XCTAssertEqual(Stats.topSpending(movements: ms, in: octubre).map(\.name), ["TIENDA DEMO"])
+        let flows = Stats.pocketFlows(movements: ms, in: octubre, pocketAccounts: [cajitas])
+        XCTAssertEqual(flows, PocketFlows(saved: 300_000, withdrawn: 120_000))
+        XCTAssertEqual(flows.net, 180_000)
+    }
+}

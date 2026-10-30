@@ -120,8 +120,13 @@ struct StatementImportView: View {
                     LabeledContent("Ingresos", value: Money.format(selectedIncome(refunds: false)))
                     LabeledContent("Reembolsos (se restan de los gastos)", value: Money.format(selectedIncome(refunds: true)))
                     LabeledContent("Gastos", value: Money.format(total(of: .gasto)))
-                    LabeledContent("Pagos a tarjeta de crédito", value: Money.format(total(of: .transferencia)))
-                    let balance = total(of: .ingreso) - total(of: .gasto) - total(of: .transferencia)
+                    let saved = pocketTotal(.toPocket)
+                    let withdrawn = pocketTotal(.fromPocket)
+                    let cardPayments = total(of: .transferencia) - saved - withdrawn
+                    LabeledContent("Pagos a tarjeta de crédito", value: Money.format(cardPayments))
+                    if saved > 0 { LabeledContent("Guardado en cajitas (no es gasto)", value: Money.format(saved)) }
+                    if withdrawn > 0 { LabeledContent("Sacado de cajitas (no es ingreso)", value: Money.format(withdrawn)) }
+                    let balance = total(of: .ingreso) - total(of: .gasto) - cardPayments - saved + withdrawn
                     LabeledContent(balance < 0 ? "Salió más de lo que entró" : "Entró más de lo que salió",
                                    value: Money.format(abs(balance)))
                         .foregroundStyle(balance < 0 ? Color.red : Color.green)
@@ -175,6 +180,15 @@ struct StatementImportView: View {
         selected.reduce(0) { $0 + (self.kind($1) == kind ? entries[$1].amount : 0) }
     }
 
+    /// El renglón es plata que se guarda en una cajita o se saca de ella (y nadie le cambió el tipo).
+    private func isPocket(_ index: Int, _ direction: PocketDirection) -> Bool {
+        kind(index) == .transferencia && entries[index].pocket == direction
+    }
+
+    private func pocketTotal(_ direction: PocketDirection) -> Int {
+        selected.reduce(0) { $0 + (isPocket($1, direction) ? entries[$1].amount : 0) }
+    }
+
     private func selectedIncome(refunds: Bool) -> Int {
         selected.reduce(0) { sum, index in
             let entry = entries[index]
@@ -211,7 +225,7 @@ struct StatementImportView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Text((kind(index) == .ingreso ? "+" : "-") + Money.format(entry.amount)).monospacedDigit()
+            Text((kind(index) == .ingreso || isPocket(index, .fromPocket) ? "+" : "-") + Money.format(entry.amount)).monospacedDigit()
             Menu {
                 Button(isOn ? "Ignorar este movimiento" : "Importar este movimiento",
                        systemImage: isOn ? "minus.circle" : "plus.circle") {
@@ -486,6 +500,7 @@ struct StatementImportView: View {
         let cards = accounts.filter { $0.kind == .credito && $0.bank == account.bank && $0.id != account.id }
         var created: [Movement] = []
         var knownCategories = categories
+        var pocketsAccount: Account?
         for index in selected.sorted() {
             let entry = entries[index]
             let finalKind = kind(index)
@@ -497,7 +512,15 @@ struct StatementImportView: View {
             let movement = Movement(amount: entry.amount, date: entry.date, kind: finalKind, method: method,
                                     accountID: account.id, source: .extracto, status: .confirmado)
             movement.merchant = entry.description.isEmpty ? nil : entry.description
-            if finalKind == .transferencia, cards.count == 1 { movement.destinationAccountID = cards[0].id }
+            if let direction = entry.pocket, finalKind == .transferencia, ReconciliationService.allowsPockets(account) {
+                // Guardar en una cajita o sacar de ella es un traslado entre la cuenta y sus cajitas: no es gasto ni ingreso.
+                let pockets = pocketsAccount ?? ReconciliationService.pockets(of: account, context: context)
+                pocketsAccount = pockets
+                movement.accountID = direction == .fromPocket ? pockets.id : account.id
+                movement.destinationAccountID = direction == .fromPocket ? account.id : pockets.id
+            } else if finalKind == .transferencia, cards.count == 1 {
+                movement.destinationAccountID = cards[0].id
+            }
             movement.note = MovementTag.compose(text: "", hold: holdFlags.contains(index), thirdParty: thirdPartyFlags.contains(index))
             if let name = categoryName(index) {
                 if let known = knownCategories.first(where: { $0.name == name }) {
