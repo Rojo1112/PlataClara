@@ -1,0 +1,35 @@
+{
+  "name": "PlataClara",
+  "identifier": "com.rojo1112.plataclara.source",
+  "subtitle": "Finanzas personales para Colombia, privadas y sin conexión.",
+  "website": "https://github.com/Rojo1112/PlataClara",
+  "apps": [
+    {
+      "name": "PlataClara",
+      "bundleIdentifier": "com.rojo1112.plataclara",
+      "developerName": "Rojo1112",
+      "subtitle": "Tu plata, clara.",
+      "localizedDescription": "Finanzas personales para Colombia (Nu, Dale!, Ualá, Lulo y otros bancos): tarjetas, QR, llaves Bre-B, gastos fijos, extractos, capturas y cuadre con el banco. Todo vive en tu iPhone: sin servidor, sin cuenta y sin conexión a internet.",
+      "iconURL": "https://raw.githubusercontent.com/Rojo1112/PlataClara/main/PlataClara/Assets.xcassets/AppIcon.appiconset/icon.png",
+      "tintColor": "0E7C66",
+      "category": "finance",
+      "versions": [
+        {
+          "version": "0.7.4",
+          "date": "2026-11-10",
+          "localizedDescription": "Bloqueo opcional con Face ID, contenido tapado en el selector de apps y notificaciones sin montos.",
+          "downloadURL": "https://github.com/Rojo1112/PlataClara/releases/download/v0.7.4/PlataClara.ipa",
+          "size": 1144636,
+          "minOSVersion": "17.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {
+          "NSFaceIDUsageDescription": "Para abrir PlataClara solo con tu rostro o tu código."
+        }
+      }
+    }
+  ],
+  "news": []
+}

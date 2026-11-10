@@ -20,3 +20,14 @@ Para no hacerlo a mano, instala **SideStore** desde iloader: renueva la firma so
 ## Actualizar
 
 Descarga el `.ipa` nuevo e instálalo encima, igual que en el paso 4. Antes, por precaución, haz un respaldo en **Ajustes › Respaldo**.
+
+## Con la fuente de SideStore (actualizaciones dentro de SideStore)
+
+Si ya tienes SideStore instalado, no hace falta descargar el `.ipa` a mano:
+
+1. En SideStore abre **Sources** (Fuentes) › **+**.
+2. Pega esta dirección y agrégala:
+   `https://raw.githubusercontent.com/Rojo1112/PlataClara/main/altstore.json`
+3. PlataClara aparece en **Browse**: instálala desde ahí. Las versiones nuevas salen en **My Apps › Update**.
+
+La firma sigue durando 7 días con un Apple ID gratuito; SideStore la renueva.
