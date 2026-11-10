@@ -56,7 +56,7 @@ enum BackupFolderService {
         let access = folder.startAccessingSecurityScopedResource()
         defer { if access { folder.stopAccessingSecurityScopedResource() } }
         do {
-            let data = try BackupCodec.encode(BackupService.makeFile(context: context))
+            let data = try BackupService.encoded(context: context)
             let name = BackupRotation.fileName(for: now, calendar: .gregoriano)
             try data.write(to: folder.appendingPathComponent(name), options: .atomic)
             for old in BackupRotation.filesToDelete(names: backupNames(in: folder), keep: keepCount) {
@@ -70,11 +70,11 @@ enum BackupFolderService {
     }
 
     /// Restaura el respaldo más reciente de la carpeta; devuelve cuántos movimientos recuperó.
-    static func restoreLatest(context: ModelContext) throws -> Int {
+    static func restoreLatest(password: String? = nil, context: ModelContext) throws -> Int {
         guard let folder = resolveFolder() else { throw BackupFolderError.sinCarpeta }
         let access = folder.startAccessingSecurityScopedResource()
         defer { if access { folder.stopAccessingSecurityScopedResource() } }
         guard let name = BackupRotation.latest(names: backupNames(in: folder)) else { throw BackupFolderError.sinRespaldos }
-        return try BackupService.restore(from: folder.appendingPathComponent(name), context: context)
+        return try BackupService.restore(from: folder.appendingPathComponent(name), password: password, context: context)
     }
 }

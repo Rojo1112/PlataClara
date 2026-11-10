@@ -6,7 +6,7 @@ PlataClara no recopila ningún dato. No tiene servidor, cuentas, analítica ni p
 
 - **Tus movimientos, cuentas, categorías, gastos fijos y saldos** se guardan solo en tu teléfono, dentro del espacio privado de la app.
 - **El texto original de cada aviso** que la app registra sola (correo del banco, captura, notificación en Android, pago con Apple Pay) se guarda junto al movimiento, para que puedas revisarlo si la app lo entendió mal.
-- **Los respaldos** son archivos JSON **sin cifrar** que tú decides crear y dónde guardar (una carpeta de Archivos, iCloud Drive o la nube que elijas en Android). Incluyen todo lo anterior. Quien pueda leer esa carpeta puede leer tus finanzas: guárdalos en un lugar que solo tú veas.
+- **Los respaldos** son archivos JSON que tú decides crear y dónde guardar (una carpeta de Archivos, iCloud Drive o la nube que elijas en Android). Incluyen todo lo anterior. En iPhone puedes **cifrarlos con una contraseña** (Ajustes › Cifrar respaldos); sin cifrar, quien pueda leer esa carpeta puede leer tus finanzas. En Android todavía no se cifran.
 
 ## Qué no hace
 

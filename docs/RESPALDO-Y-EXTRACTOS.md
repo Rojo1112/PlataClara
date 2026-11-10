@@ -16,6 +16,16 @@ Limitaciones:
 
 El respaldo manual (Ajustes › Respaldo) sigue disponible y usa el mismo formato JSON.
 
+## Cifrar los respaldos (iPhone)
+
+Ajustes › **Cifrar respaldos**: escribe una contraseña de 8 caracteres o más y repítela. Desde ahí, los respaldos de la carpeta y los que compartas se guardan cifrados y solo se abren con esa contraseña.
+
+- La app guarda una llave en el iPhone para seguir respaldando sola; la contraseña no se guarda en ningún lado.
+- **Si olvidas la contraseña, esos respaldos no se pueden recuperar.** Anótala en un lugar seguro.
+- Al restaurar en un iPhone nuevo o después de reinstalar, la app pide la contraseña y deja el cifrado activo.
+- Los respaldos sin cifrar que ya estaban en la carpeta no se tocan: bórralos tú si no los quieres ahí.
+- La versión de Android todavía no lee respaldos cifrados.
+
 ## Importar extractos bancarios
 
 Ajustes › **Importar extracto bancario**:

@@ -9,6 +9,8 @@ struct BackupFolderSection: View {
     @State private var last: Date?
     @State private var choosing = false
     @State private var confirmRestore = false
+    @State private var askPassword = false
+    @State private var typedPassword = ""
     @State private var message: String?
 
     var body: some View {
@@ -34,7 +36,7 @@ struct BackupFolderSection: View {
                 Button("Respaldar ahora") {
                     message = BackupFolderService.autoBackup(context: context)
                         ? "Respaldo guardado en la carpeta."
-                        : "No se pudo guardar (¿no hay datos todavía o la carpeta ya no está disponible?)."
+                        : "No se pudo guardar (¿no hay datos todavía, la carpeta ya no está disponible o falta la llave del cifrado?)."
                     refresh()
                 }
                 Button("Restaurar el último respaldo de la carpeta", role: .destructive) { confirmRestore = true }
@@ -42,6 +44,16 @@ struct BackupFolderSection: View {
                                         isPresented: $confirmRestore, titleVisibility: .visible) {
                         Button("Reemplazar", role: .destructive) { restore() }
                         Button("Cancelar", role: .cancel) {}
+                    }
+                    .alert("Contraseña del respaldo", isPresented: $askPassword) {
+                        SecureField("Contraseña", text: $typedPassword)
+                        Button("Restaurar") {
+                            restore(password: typedPassword)
+                            typedPassword = ""
+                        }
+                        Button("Cancelar", role: .cancel) { typedPassword = "" }
+                    } message: {
+                        Text("El último respaldo de la carpeta está cifrado.")
                     }
             }
         } header: {
@@ -72,11 +84,13 @@ struct BackupFolderSection: View {
         refresh()
     }
 
-    private func restore() {
+    private func restore(password: String? = nil) {
         do {
-            let count = try BackupFolderService.restoreLatest(context: context)
+            let count = try BackupFolderService.restoreLatest(password: password, context: context)
             RecurringService.refresh(context: context)
             message = "Respaldo restaurado: \(count) movimientos."
+        } catch BackupProtectionError.needsPassword {
+            askPassword = true
         } catch BackupError.unsupportedVersion(let version) {
             message = "El respaldo usa un formato no compatible (versión \(version)). No se cambió nada."
         } catch {

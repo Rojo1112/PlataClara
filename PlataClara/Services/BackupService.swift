@@ -2,8 +2,63 @@ import Foundation
 import SwiftData
 import PlataCore
 
+enum BackupProtectionError: LocalizedError {
+    case missingKey, needsPassword, wrongPassword
+
+    var errorDescription: String? {
+        switch self {
+        case .missingKey: return "Los respaldos están cifrados pero este iPhone no tiene la llave. Vuelve a poner la contraseña en Ajustes › Cifrar respaldos."
+        case .needsPassword: return "El respaldo está cifrado: escribe su contraseña."
+        case .wrongPassword: return "La contraseña no abre este respaldo. No se cambió nada."
+        }
+    }
+}
+
 @MainActor
 enum BackupService {
+    static let encryptionKey = "respaldoCifrado"
+
+    /// El usuario pidió cifrar los respaldos. Si además falta la llave en el llavero, no se escribe ninguno:
+    /// nunca se vuelve a guardar en claro sin que lo decida.
+    static var encryptionEnabled: Bool { UserDefaults.standard.bool(forKey: encryptionKey) }
+
+    /// El respaldo listo para escribir: cifrado si el cifrado está activo.
+    static func encoded(context: ModelContext) throws -> Data {
+        let plain = try BackupCodec.encode(makeFile(context: context))
+        guard encryptionEnabled else { return plain }
+        guard let key = BackupKeychain.load() else { throw BackupProtectionError.missingKey }
+        return try BackupCrypto.encrypt(plain, with: key)
+    }
+
+    /// Activa el cifrado con esa contraseña (o la cambia). Devuelve false si el llavero no aceptó la llave.
+    static func enableEncryption(password: String) throws -> Bool {
+        let key = try BackupCrypto.makeKey(password: password)
+        guard BackupKeychain.save(key) else { return false }
+        UserDefaults.standard.set(true, forKey: encryptionKey)
+        return true
+    }
+
+    static func disableEncryption() {
+        UserDefaults.standard.set(false, forKey: encryptionKey)
+        BackupKeychain.delete()
+    }
+
+    /// El contenido del archivo en claro. Uno cifrado se abre con la llave de este iPhone o, si no sirve, con la
+    /// contraseña; abrirlo con contraseña deja el cifrado activo con esa llave, para seguir respaldando cifrado.
+    private static func plainData(of url: URL, password: String?) throws -> Data {
+        let data = try Data(contentsOf: url)
+        guard BackupCrypto.isEncrypted(data) else { return data }
+        if let key = BackupKeychain.load(), let plain = try? BackupCrypto.decrypt(data, with: key) { return plain }
+        guard let password, !password.isEmpty else { throw BackupProtectionError.needsPassword }
+        do {
+            let opened = try BackupCrypto.decrypt(data, password: password)
+            if BackupKeychain.save(opened.key) { UserDefaults.standard.set(true, forKey: encryptionKey) }
+            return opened.plain
+        } catch BackupCryptoError.wrongPassword {
+            throw BackupProtectionError.wrongPassword
+        }
+    }
+
     static func makeFile(context: ModelContext) -> BackupFile {
         BackupFile(
             exportedAt: .now,
@@ -38,7 +93,7 @@ enum BackupService {
     }
 
     static func exportURL(context: ModelContext) throws -> URL {
-        let data = try BackupCodec.encode(makeFile(context: context))
+        let data = try encoded(context: context)
         let stamp = Date.now.formatted(.iso8601.year().month().day())
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("PlataClara-respaldo-\(stamp).json")
         try data.write(to: url, options: .atomic)
@@ -46,10 +101,10 @@ enum BackupService {
     }
 
     /// Reemplaza todos los datos por los del archivo. Devuelve cuántos movimientos se restauraron.
-    static func restore(from url: URL, context: ModelContext) throws -> Int {
+    static func restore(from url: URL, password: String? = nil, context: ModelContext) throws -> Int {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
-        let file = try BackupCodec.decode(Data(contentsOf: url))
+        let file = try BackupCodec.decode(plainData(of: url, password: password))
 
         do {
             context.all(Movement.self).forEach { context.delete($0) }
