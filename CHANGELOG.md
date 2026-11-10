@@ -9,6 +9,15 @@ La versión recomendada para volver atrás si algo falla es la [v0.5.1](https://
 
 ---
 
+## Sin publicar — Bloqueo de la app y privacidad
+**Qué cambió**
+- **Bloqueo opcional** (Ajustes › Seguridad): pide Face ID, Touch ID o el código del iPhone al abrir la app y al volver después de un minuto fuera. Activarlo o quitarlo también exige identificarse.
+- Con el bloqueo activo, el contenido se tapa en el selector de apps y las notificaciones de pagos ya no muestran montos ni comercios.
+- Documentos nuevos: [privacidad](docs/PRIVACIDAD.md) y [seguridad](SECURITY.md).
+- Compilación automática: permisos mínimos (solo el paso que publica la versión puede escribir), acciones fijadas por commit y avisos de dependencias.
+
+**Comprobado**: 🧪 sin compilar todavía (no hay Xcode en este equipo) ni probado en iPhone. Los respaldos en carpeta siguen sin cifrar.
+
 ## v0.7.3 — Saldos que parten del banco
 **Qué cambió**
 - **Saldo de la cuenta:** el campo «Saldo actual» ahora sí es el de hoy. En una cuenta nueva se guarda también como punto de cuadre con la hora de ahora, así que los movimientos anteriores que importes después no lo cambian. En una cuenta existente el campo muestra el saldo que calcula la app; si lo cambias, queda como punto de cuadre, sin tocar el saldo inicial. Antes se guardaba como saldo inicial y la app le restaba otra vez todo lo importado.

@@ -11,7 +11,7 @@ App de finanzas personales para iPhone, hecha para Colombia (Nu, Dale!, Ualá, L
 - **Cuadre automático con el banco**: el saldo parte del último saldo que dio el banco (extracto, captura de inicio o a mano), la app dice qué tan confiable es y, si algo no cuadra, cuánto falta y qué lo explica. Ver [docs/CUADRE-CON-EL-BANCO.md](docs/CUADRE-CON-EL-BANCO.md).
 - **Respaldo automático en una carpeta** de Archivos o iCloud Drive: si desinstalas la app, tus datos siguen ahí y se restauran con un toque.
 - **Siempre puedes registrar a mano**: botón **+** en Inicio y Movimientos; lo que la app no entienda queda en «Por revisar».
-- **Privada**: todo vive en tu iPhone. Sin servidor, sin cuenta, sin analítica. Respaldo en JSON cuando quieras.
+- **Privada**: todo vive en tu iPhone. Sin servidor, sin cuenta, sin analítica, sin conexión a internet. Bloqueo opcional con Face ID. Respaldo en JSON cuando quieras. Ver [docs/PRIVACIDAD.md](docs/PRIVACIDAD.md).
 
 ## Descargar e instalar
 

@@ -6,3 +6,23 @@ Payload/
 .build/
 .swiftpm/
 DerivedData/
+
+# Herramientas locales: nunca al repositorio
+.claude/
+graphify-out/
+
+# Android
+*.apk
+*.aab
+android/.gradle/
+android/**/build/
+local.properties
+
+# Llaves de firma y secretos
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+*.pem
+.env
+.env.*

@@ -10,6 +10,20 @@ struct SettingsView: View {
     @State private var pendingRestore: URL?
     @State private var message: String?
     @State private var showTutorial = false
+    @AppStorage(AppLock.enabledKey) private var lockEnabled = false
+
+    /// Activar o quitar el bloqueo exige identificarse: así nadie más lo apaga con el teléfono desbloqueado.
+    private func setLock(_ on: Bool) {
+        guard AppLock.isAvailable else {
+            message = "Primero ponle un código de desbloqueo al iPhone (Ajustes › Face ID y código)."
+            return
+        }
+        Task {
+            if await AppLock.authenticate(reason: on ? "Activar el bloqueo de PlataClara" : "Quitar el bloqueo de PlataClara") {
+                lockEnabled = on
+            }
+        }
+    }
 
     var body: some View {
         List {
@@ -37,6 +51,13 @@ struct SettingsView: View {
                 Text("Respaldo")
             } footer: {
                 Text("Guarda el respaldo en Archivos o iCloud Drive. Restaurar reemplaza todos los datos actuales.")
+            }
+            Section {
+                Toggle("Pedir Face ID o código al abrir", isOn: Binding(get: { lockEnabled }, set: { setLock($0) }))
+            } header: {
+                Text("Seguridad")
+            } footer: {
+                Text("Bloquea la app al abrirla y al volver después de un minuto, tapa su contenido en el selector de apps y quita los montos de las notificaciones. Usa Face ID, Touch ID o el código del iPhone. Los respaldos en carpeta no van cifrados: guárdalos en un lugar que solo tú veas.")
             }
             Section("Acerca de") {
                 LabeledContent("Versión", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-")

@@ -35,6 +35,7 @@ enum PaymentNotifier {
         case .duplicate:
             return
         }
+        hideDetailsIfLocked(content)
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content,
                                             trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false))
         UNUserNotificationCenter.current().add(request)
@@ -55,6 +56,13 @@ enum PaymentNotifier {
 }
 
 extension PaymentNotifier {
+    /// Con el bloqueo de la app activo, la notificación no muestra montos ni comercios: se leería en la pantalla bloqueada.
+    static func hideDetailsIfLocked(_ content: UNMutableNotificationContent) {
+        guard AppLock.isEnabled else { return }
+        content.title = "Movimiento registrado"
+        content.body = "Abre PlataClara para verlo."
+    }
+
     /// Aviso de ejemplo para ver cómo llegan, sin registrar ningún movimiento.
     @MainActor
     static func sendTest(context: ModelContext) {
@@ -62,6 +70,7 @@ extension PaymentNotifier {
         content.title = "Pagaste $ 25.000"
         content.body = "TIENDA DE EJEMPLO · \(monthLine(context))"
         content.sound = .default
+        hideDetailsIfLocked(content)
         UNUserNotificationCenter.current().add(UNNotificationRequest(
             identifier: UUID().uuidString, content: content,
             trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)))
