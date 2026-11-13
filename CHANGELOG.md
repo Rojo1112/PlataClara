@@ -9,14 +9,14 @@ La versión recomendada para volver atrás si algo falla es la [v0.5.1](https://
 
 ---
 
-## Sin publicar — Respaldos cifrados
+## v0.7.5 — Respaldos cifrados
 **Qué cambió**
 - **Ajustes › Cifrar respaldos:** con una contraseña, los respaldos de la carpeta y los que compartas se guardan cifrados (AES-256-GCM, llave derivada con PBKDF2-SHA256). La llave queda en el llavero del iPhone para el respaldo automático; la contraseña no se guarda.
 - Restaurar un respaldo cifrado pide la contraseña (si este iPhone no tiene ya la llave) y deja el cifrado activo.
 - Si el cifrado está activo y falta la llave, la app no escribe respaldos en claro: avisa en Ajustes.
 - Quitar el cifrado exige Face ID o el código.
 
-**Comprobado**: 🧪 sin compilar todavía ni probado en iPhone. **Si olvidas la contraseña, esos respaldos no se recuperan.** Android no lee respaldos cifrados.
+**Comprobado**: 🧪 compila en GitHub y pasan las pruebas del cifrado (127 en macOS); falta probar en iPhone las pantallas y el llavero. **Si olvidas la contraseña, esos respaldos no se recuperan.** Android no lee respaldos cifrados.
 
 ## v0.7.4 — Bloqueo de la app y privacidad
 **Qué cambió**
