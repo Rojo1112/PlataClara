@@ -15,6 +15,14 @@
       "category": "finance",
       "versions": [
         {
+          "version": "0.7.5",
+          "date": "2026-11-13",
+          "localizedDescription": "Respaldos cifrados con contraseña (Ajustes › Cifrar respaldos).",
+          "downloadURL": "https://github.com/Rojo1112/PlataClara/releases/download/v0.7.5/PlataClara.ipa",
+          "size": 1185208,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "0.7.4",
           "date": "2026-11-10",
           "localizedDescription": "Bloqueo opcional con Face ID, contenido tapado en el selector de apps y notificaciones sin montos.",
