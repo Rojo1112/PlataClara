@@ -9,6 +9,22 @@ La versión recomendada para volver atrás si algo falla es la [v0.5.1](https://
 
 ---
 
+## v0.8.0 — Cajitas sin duplicados, nombres limpios y búsqueda
+**Errores corregidos**
+- **Volver a importar capturas duplicaba los retiros de cajita.** Ahora se reconocen como ya registrados, también si una versión anterior los guardó como ingreso o gasto.
+- **La cuenta de cajitas confundía el registro automático.** Los atajos sin nombre de cuenta y los avisos identificados por el banco dejaban de encontrar la cuenta y caían en «Por revisar»; el formulario de movimiento dejaba de traer la cuenta elegida. Las cajitas ya no cuentan como una cuenta más para eso.
+- **Nombres partidos por la lectura de la captura.** Lo que el reconocimiento de texto «leía» en el ícono de cada fila quedaba metido en el nombre («LIDY ·3 OSORIO»). Ahora se descarta, y «¿De dónde viene tu plata?» y «Mayores gastos» suman la misma persona o comercio aunque cambien mayúsculas, tildes o signos («UBER*RIDES» y «UBER RIDES»).
+- Un aviso de cajita registrado con un atajo entraba como gasto: ahora queda por revisar como traslado.
+
+**Funciones nuevas**
+- **Búsqueda en Movimientos** por nombre, nota, categoría, cuenta o monto.
+- **Ahorro por cajita** en Estadísticas: lo que guardaste y sacaste de cada una.
+- **Ajustes › Cajitas de versiones anteriores:** convierte en traslados los movimientos de cajita guardados como ingreso o gasto antes de la v0.7.2. Solo aparece si hay alguno.
+
+**Android (0.3.2):** conserva los puntos de cuadre y las cajitas de un respaldo del iPhone al volver a respaldar, y las cajitas ya no confunden el registro por notificaciones.
+
+**Comprobado** [compilación automática]: pruebas de `PlataCore` (136 en Linux) y las 43 capturas de Nu de octubre leídas con OCR en Linux: los ingresos de la misma persona quedan en un solo renglón con el valor exacto, y volver a importar las mismas capturas no deja ningún movimiento nuevo. [pendiente] Probar en iPhone: el filtro de íconos depende de las posiciones que entrega el reconocimiento de texto del iPhone, que aquí no se pudo ejecutar.
+
 ## v0.7.5 — Respaldos cifrados
 **Qué cambió**
 - **Ajustes › Cifrar respaldos:** con una contraseña, los respaldos de la carpeta y los que compartas se guardan cifrados (AES-256-GCM, llave derivada con PBKDF2-SHA256). La llave queda en el llavero del iPhone para el respaldo automático; la contraseña no se guarda.

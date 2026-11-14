@@ -6,7 +6,8 @@ App de finanzas personales para iPhone, hecha para Colombia (Nu, Dale!, Ualá, L
 - **Registro automático** con Atajos de iOS: pagos con Apple Pay, correos del banco y capturas de pantalla de comprobantes.
 - **Gastos fijos** del mes (arriendo, servicios, suscripciones) con recordatorio y estado pendiente/pagado.
 - **Saldos** por cuenta, **deuda** de tarjetas, **ahorro** del mes y **ahorro posible** (descontando los fijos que faltan).
-- Estadísticas por categoría, por método de pago y de los últimos 6 meses.
+- Estadísticas por categoría, por método de pago y de los últimos 6 meses. Lo que guardas en **cajitas** se cuenta aparte como ahorro, por cajita, y no como gasto.
+- **Búsqueda** en Movimientos por nombre, categoría, cuenta o monto.
 - **Importa extractos bancarios** (PDF con texto, CSV o TXT): elige la cuenta, revisa los movimientos encontrados y los que ya tenías aparecen desmarcados. Ver [docs/RESPALDO-Y-EXTRACTOS.md](docs/RESPALDO-Y-EXTRACTOS.md).
 - **Cuadre automático con el banco**: el saldo parte del último saldo que dio el banco (extracto, captura de inicio o a mano), la app dice qué tan confiable es y, si algo no cuadra, cuánto falta y qué lo explica. Ver [docs/CUADRE-CON-EL-BANCO.md](docs/CUADRE-CON-EL-BANCO.md).
 - **Respaldo automático en una carpeta** de Archivos o iCloud Drive: si desinstalas la app, tus datos siguen ahí y se restauran con un toque.
@@ -20,7 +21,7 @@ Ninguna de las dos versiones está en una tienda de apps.
 - **iPhone:** descarga `PlataClara.ipa` desde [Releases](https://github.com/Rojo1112/PlataClara/releases/latest) y sigue [docs/INSTALACION.md](docs/INSTALACION.md).
 - **Android:** descarga `PlataClara.apk` desde [Releases](https://github.com/Rojo1112/PlataClara/releases?q=android) y sigue [docs/INSTALACION-ANDROID.md](docs/INSTALACION-ANDROID.md). En Android el registro puede ser **automático leyendo las notificaciones de tus apps de banco**, con tu permiso. *(Versión sin probar aún en teléfono real.)*
 
-Ambas versiones guardan sus datos en el mismo formato de respaldo (JSON), así que puedes pasar tus datos de una a otra.
+Las dos versiones usan el mismo formato de respaldo (JSON), con límites: la de Android está varias versiones atrás. Lee los respaldos **sin cifrar** del iPhone y conserva sus puntos de cuadre y cajitas al volver a respaldar, pero todavía no los usa (sus saldos no parten del banco) y no lee respaldos cifrados.
 
 ## Registro automático
 

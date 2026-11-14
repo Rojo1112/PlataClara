@@ -27,7 +27,7 @@ Lo que PlataClara no entienda queda en **Por revisar**, con el texto original. U
 
 Ajustes › **Respaldo automático** › *Elegir carpeta*. La app guarda `PlataClara-AAAA-MM-DD.json` en esa carpeta (en el teléfono o en tu nube) cada vez que la cierras o registra algo, y conserva las 7 últimas. Después de reinstalar: elige la misma carpeta y toca **Restaurar el último respaldo de la carpeta**.
 
-El formato es el mismo de la app del iPhone: puedes llevar tus datos de un sistema a otro con *Exportar* e *Importar*.
+El formato es el mismo de la app del iPhone: puedes llevar tus datos de un sistema a otro con *Exportar* e *Importar*, mientras el respaldo no esté cifrado. Los puntos de cuadre y las cajitas del iPhone se conservan al volver a respaldar, pero esta versión todavía no los usa: el saldo sale del saldo inicial más los movimientos.
 
 ## Importar extractos
 
