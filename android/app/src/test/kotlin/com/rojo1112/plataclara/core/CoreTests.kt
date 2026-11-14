@@ -383,6 +383,20 @@ class StatementAndBackupTests {
         assertEquals(0, BackupCodec.decode(ios).movements.size)
     }
 
+    @Test fun keepsIphoneCheckpointsAndPockets() {
+        val account = """"bank":"nu","kind":"ahorros","openingBalance":0,"last4":[],"emailSenders":[],"createdAt":"2026-10-04T17:00:00Z""""
+        val ios = """{"formatVersion":1,"exportedAt":"2026-10-04T17:00:00Z","accounts":[{"id":"a1","name":"Nu",$account},{"id":"a2","name":"Cajitas Nu",$account,"parentAccountID":"a1"}],"categories":[],"movements":[],"recurring":[],"occurrences":[],"checkpoints":[{"id":"k1","accountID":"a1","date":"2026-10-30T17:44:00Z","balance":63335,"source":"captura"}]}"""
+        val data = BackupCodec.decode(ios)
+        assertEquals("a1", data.accounts[1].parentAccountID)
+        // Restaurar el respaldo del iPhone y volver a respaldar no pierde los puntos de cuadre ni las cajitas.
+        val again = BackupCodec.decode(BackupCodec.encode(data.copy(exportedAt = Instant.parse("2026-11-01T00:00:00Z"))))
+        assertEquals(data.checkpoints, again.checkpoints)
+        assertTrue(BackupCodec.encode(data).contains("63335"))
+        assertEquals("a1", again.accounts[1].parentAccountID)
+        // Las cajitas no compiten con la cuenta por los avisos del banco.
+        assertEquals("a1", AccountMatcher.match(Bank.nu, null, PaymentMethod.debito, null, data.accounts.map { it.hint() }))
+    }
+
     @Test fun rejectsOtherVersionAndGarbage() {
         try { BackupCodec.decode(BackupCodec.encode(sample(99))); fail("debía rechazar la versión") }
         catch (e: BackupException.UnsupportedVersion) { assertEquals(99, e.version) }

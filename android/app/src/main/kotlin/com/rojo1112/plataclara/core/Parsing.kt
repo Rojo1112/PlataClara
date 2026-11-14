@@ -132,19 +132,23 @@ data class AccountHint(
     val last4: List<String> = emptyList(),
     val walletCardName: String? = null,
     val emailSenders: List<String> = emptyList(),
+    /** Es la cuenta interna de las cajitas de otra cuenta: nunca recibe un pago ni un aviso del banco. */
+    val isPocket: Boolean = false,
 )
 
 object AccountMatcher {
     /** Orden: últimos 4 dígitos → remitente → banco. Si hay varias, desempata por tipo (crédito/ahorros). */
     fun match(bank: Bank?, last4: String?, method: PaymentMethod, sender: String?, hints: List<AccountHint>): String? {
-        if (last4 != null) hints.firstOrNull { last4 in it.last4 }?.let { return it.id }
+        // Las cajitas no cuentan: si lo hicieran, «Nu» tendría dos cuentas de ahorros y ningún aviso encontraría la suya.
+        val own = hints.filter { !it.isPocket }
+        if (last4 != null) own.firstOrNull { last4 in it.last4 }?.let { return it.id }
 
         var candidates = emptyList<AccountHint>()
         if (!sender.isNullOrEmpty()) {
             val s = TextNormalizer.fold(sender)
-            candidates = hints.filter { h -> h.emailSenders.any { it.isNotEmpty() && s.contains(TextNormalizer.fold(it)) } }
+            candidates = own.filter { h -> h.emailSenders.any { it.isNotEmpty() && s.contains(TextNormalizer.fold(it)) } }
         }
-        if (candidates.isEmpty() && bank != null) candidates = hints.filter { it.bank == bank }
+        if (candidates.isEmpty() && bank != null) candidates = own.filter { it.bank == bank }
         if (candidates.size == 1) return candidates[0].id
         val wanted = if (method == PaymentMethod.credito) AccountKind.credito else AccountKind.ahorros
         val byKind = candidates.filter { it.kind == wanted }

@@ -257,6 +257,7 @@ fun AccountDialog(initial: Account?, onDismiss: () -> Unit, onSave: (Account) ->
                             paymentDay = if (kind == AccountKind.credito) payment else null,
                             last4 = split(last4), walletCardName = initial?.walletCardName, emailSenders = split(senders),
                             createdAt = initial?.createdAt ?: Instant.now(),
+                            parentAccountID = initial?.parentAccountID,
                         ),
                     )
                 },

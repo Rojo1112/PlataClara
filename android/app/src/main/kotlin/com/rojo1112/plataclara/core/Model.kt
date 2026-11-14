@@ -8,6 +8,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -36,9 +37,11 @@ data class Account(
     val walletCardName: String? = null,
     val emailSenders: List<String> = emptyList(),
     @Serializable(with = InstantIsoSerializer::class) val createdAt: Instant,
+    /** Cuenta a la que pertenece (las cajitas de Nu dentro de la cuenta Nu). Viene del respaldo del iPhone. */
+    val parentAccountID: String? = null,
 ) {
     fun snapshot() = AccountSnapshot(id, kind, openingBalance)
-    fun hint() = AccountHint(id, bank, kind, last4, walletCardName, emailSenders)
+    fun hint() = AccountHint(id, bank, kind, last4, walletCardName, emailSenders, isPocket = parentAccountID != null)
 }
 
 @Serializable
@@ -107,6 +110,11 @@ data class AppData(
     val movements: List<Movement> = emptyList(),
     val recurring: List<Recurring> = emptyList(),
     val occurrences: List<Occurrence> = emptyList(),
+    /**
+     * Puntos de cuadre con el banco del iPhone. Esta app todavía no los usa, pero los guarda tal cual para que
+     * restaurar un respaldo del iPhone y volver a respaldar no los borre.
+     */
+    val checkpoints: JsonElement? = null,
 )
 
 sealed class BackupException(message: String) : Exception(message) {
