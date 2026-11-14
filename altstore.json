@@ -15,6 +15,14 @@
       "category": "finance",
       "versions": [
         {
+          "version": "0.8.0",
+          "date": "2026-11-14",
+          "localizedDescription": "Las cajitas ya no se duplican al volver a importar capturas, nombres sin restos del reconocimiento de texto, búsqueda en Movimientos y ahorro por cajita.",
+          "downloadURL": "https://github.com/Rojo1112/PlataClara/releases/download/v0.8.0/PlataClara.ipa",
+          "size": 1220714,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "0.7.5",
           "date": "2026-11-13",
           "localizedDescription": "Respaldos cifrados con contraseña (Ajustes › Cifrar respaldos).",
