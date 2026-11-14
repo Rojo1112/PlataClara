@@ -36,4 +36,4 @@ Mira [docs/AGREGAR-BANCO.md](docs/AGREGAR-BANCO.md).
 - `PlataClara/`: app SwiftUI + SwiftData. El proyecto se genera con `xcodegen generate`.
 - GitHub Actions corre las pruebas, compila sin firmar y publica el `.ipa` al crear una etiqueta `v*`.
 
-Licencia MIT.
+Todos los derechos reservados. Consulta [LICENSE](LICENSE).
