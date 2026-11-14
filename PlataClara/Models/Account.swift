@@ -49,7 +49,8 @@ final class Account {
     var snapshot: AccountSnapshot { AccountSnapshot(id: id, kind: kind, openingBalance: openingBalance) }
 
     var hint: AccountHint {
-        AccountHint(id: id, bank: bank, kind: kind, last4: last4, walletCardName: walletCardName, emailSenders: emailSenders)
+        AccountHint(id: id, bank: bank, kind: kind, last4: last4, walletCardName: walletCardName, emailSenders: emailSenders,
+                    isPocket: parentAccountID != nil)
     }
 
     static func splitList(_ raw: String) -> [String] {

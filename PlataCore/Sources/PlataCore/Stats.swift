@@ -54,6 +54,22 @@ public struct PocketFlows: Equatable, Sendable {
     }
 }
 
+/// Lo que se movió hacia y desde una cajita en el mes.
+public struct PocketTotal: Equatable, Sendable {
+    public static let unnamed = "Cajitas"
+
+    public let name: String
+    public let saved: Int
+    public let withdrawn: Int
+    public var net: Int { saved - withdrawn }
+
+    public init(name: String, saved: Int, withdrawn: Int) {
+        self.name = name
+        self.saved = saved
+        self.withdrawn = withdrawn
+    }
+}
+
 public struct CategoryTotal: Equatable, Sendable {
     public let name: String
     public let amount: Int
@@ -102,6 +118,25 @@ public enum Stats {
         return PocketFlows(saved: saved, withdrawn: withdrawn)
     }
 
+    /// Lo mismo, separado por cajita («Mi primera Cajita», «ahorro moto»), según el nombre que trae cada movimiento.
+    /// Los traslados sin nombre de cajita quedan juntos en «Cajitas».
+    public static func pocketFlowsByName(movements: [MovementSnapshot], in interval: DateInterval,
+                                         pocketAccounts: Set<UUID>) -> [PocketTotal] {
+        var saved: [String: Int] = [:], withdrawn: [String: Int] = [:], labels: [String: String] = [:]
+        for m in confirmed(movements, in: interval) where m.kind == .transferencia {
+            let into = m.destinationAccountID.map(pocketAccounts.contains) ?? false
+            let out = m.accountID.map(pocketAccounts.contains) ?? false
+            guard into != out else { continue }
+            let name = MovementClassifier.pocketName(m.merchant ?? "") ?? PocketTotal.unnamed
+            let key = groupKey(name)
+            if labels[key] == nil { labels[key] = name }
+            if into { saved[key, default: 0] += m.amount } else { withdrawn[key, default: 0] += m.amount }
+        }
+        return labels
+            .map { key, name in PocketTotal(name: name, saved: saved[key] ?? 0, withdrawn: withdrawn[key] ?? 0) }
+            .sorted { ($0.saved + $0.withdrawn, $1.name) > ($1.saved + $1.withdrawn, $0.name) }
+    }
+
     /// Gastos del mes agrupados por categoría; si un gasto no tiene, se adivina por su descripción.
     public static func spendingByCategory(movements: [MovementSnapshot], in interval: DateInterval) -> [CategoryTotal] {
         let grouped = Dictionary(grouping: expenses(movements, in: interval)) { m in
@@ -114,25 +149,43 @@ public enum Stats {
 
     /// A quién o dónde se fue más plata: gastos del mes agrupados por comercio o persona, de mayor a menor.
     public static func topSpending(movements: [MovementSnapshot], in interval: DateInterval, limit: Int = 8) -> [CategoryTotal] {
-        let grouped = Dictionary(grouping: expenses(movements, in: interval)) { m -> String in
+        let items = expenses(movements, in: interval).map { m -> (name: String, amount: Int) in
             let name = (m.merchant ?? m.categoryName ?? uncategorized).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-            return name.isEmpty ? uncategorized : name
+            return (name.isEmpty ? uncategorized : name, m.amount)
         }
-        return grouped
-            .map { CategoryTotal(name: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
-            .sorted { $0.amount != $1.amount ? $0.amount > $1.amount : $0.name < $1.name }
-            .prefix(limit).map { $0 }
+        return Array(groupedTotals(items).prefix(limit))
     }
 
     /// De dónde viene la plata: ingresos reales del mes por persona u origen, de mayor a menor.
     /// No incluye reembolsos, traslados entre tus cuentas ni plata de terceros.
     public static func incomeBySource(movements: [MovementSnapshot], in interval: DateInterval, limit: Int = 8) -> [CategoryTotal] {
         let incomes = confirmed(movements, in: interval).filter { $0.kind == .ingreso && !$0.isRefund }
-        let grouped = Dictionary(grouping: incomes) { sourceName($0.merchant ?? $0.categoryName) }
-        return grouped
-            .map { CategoryTotal(name: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+        return Array(groupedTotals(incomes.map { (sourceName($0.merchant ?? $0.categoryName), $0.amount) }).prefix(limit))
+    }
+
+    /// Suma por nombre sin distinguir mayúsculas, tildes ni signos («UBER*RIDES» y «Uber Rides» son el mismo
+    /// comercio; «Quiñónez» y «QUINONEZ», la misma persona) y muestra la forma más usada. De mayor a menor.
+    static func groupedTotals(_ items: [(name: String, amount: Int)]) -> [CategoryTotal] {
+        var totals: [String: Int] = [:]
+        var labels: [String: [String: Int]] = [:]
+        for item in items {
+            let key = groupKey(item.name)
+            totals[key, default: 0] += item.amount
+            labels[key, default: [:]][item.name, default: 0] += 1
+        }
+        return totals
+            .map { key, amount -> CategoryTotal in
+                // La forma más repetida; con empate, la primera en orden alfabético.
+                let label = (labels[key] ?? [:]).max { ($0.value, $1.key) < ($1.value, $0.key) }?.key ?? key
+                return CategoryTotal(name: label, amount: amount)
+            }
             .sorted { $0.amount != $1.amount ? $0.amount > $1.amount : $0.name < $1.name }
-            .prefix(limit).map { $0 }
+    }
+
+    static func groupKey(_ name: String) -> String {
+        let letters = TextNormalizer.fold(name).map { $0.isLetter || $0.isNumber ? $0 : " " }
+        let key = String(letters).split(separator: " ").joined(separator: " ")
+        return key.isEmpty ? name : key
     }
 
     static let incomePrefixes = ["recibiste de", "te enviaron", "te envió", "te transfirió", "transferencia de", "te pagó"]

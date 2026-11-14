@@ -8,9 +8,11 @@ public struct ParsedMovement: Equatable, Sendable {
     public var bank: Bank?
     public var last4: String?
     public var isExplicit: Bool
+    /// Es plata que se guarda en una cajita o se saca de ella; entonces `kind` es `.transferencia`.
+    public var pocket: PocketDirection?
 
     public init(amount: Int, kind: MovementKind, method: PaymentMethod, merchant: String?, bank: Bank?,
-                last4: String?, isExplicit: Bool) {
+                last4: String?, isExplicit: Bool, pocket: PocketDirection? = nil) {
         self.amount = amount
         self.kind = kind
         self.method = method
@@ -18,6 +20,7 @@ public struct ParsedMovement: Equatable, Sendable {
         self.bank = bank
         self.last4 = last4
         self.isExplicit = isExplicit
+        self.pocket = pocket
     }
 }
 
@@ -25,6 +28,13 @@ public enum GenericParser {
     public static func parse(text: String, sender: String? = nil) -> ParsedMovement? {
         guard let amount = AmountParser.firstAmount(in: text) else { return nil }
         let c = MovementClassifier.classify(text)
+        // Guardar en una cajita o sacar de ella es un traslado. Queda por revisar: falta decir entre qué cuentas.
+        if let pocket = MovementClassifier.pocketDirection(text) {
+            return ParsedMovement(amount: amount, kind: .transferencia, method: .transferencia,
+                                  merchant: MovementClassifier.pocketLabel(pocket, name: MovementClassifier.pocketName(text)),
+                                  bank: BankDetector.detect(text: text, sender: sender), last4: nil,
+                                  isExplicit: false, pocket: pocket)
+        }
         return ParsedMovement(amount: amount, kind: c.kind, method: c.method, merchant: merchant(in: text),
                               bank: BankDetector.detect(text: text, sender: sender), last4: last4(in: text),
                               isExplicit: c.explicit)

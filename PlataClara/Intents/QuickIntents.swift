@@ -27,7 +27,8 @@ enum QuickRegister {
     @MainActor
     private static func resolve(_ text: String?, in context: ModelContext) -> Account? {
         let wanted = TextNormalizer.fold(text ?? "").trimmingCharacters(in: .whitespaces)
-        let accounts = context.all(Account.self)
+        // Las cajitas son una cuenta interna: sin ellas, «nu» vuelve a nombrar una sola cuenta.
+        let accounts = context.all(Account.self).filter { $0.parentAccountID == nil }
         guard !wanted.isEmpty else { return accounts.count == 1 ? accounts[0] : nil }
         let found = accounts.filter { TextNormalizer.fold($0.name).contains(wanted) }
         return found.count == 1 ? found[0] : nil

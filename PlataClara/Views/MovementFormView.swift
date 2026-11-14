@@ -105,7 +105,9 @@ struct MovementFormView: View {
                 ToolbarItem(placement: .confirmationAction) { Button(isReview ? "Confirmar" : "Guardar", action: save) }
             }
             .onAppear {
-                if accountID == nil, accounts.count == 1 { accountID = accounts[0].id }
+                // Si solo hay una cuenta (sin contar sus cajitas), viene elegida.
+                let own = accounts.filter { $0.parentAccountID == nil }
+                if accountID == nil, own.count == 1 { accountID = own[0].id }
             }
             .onChange(of: accountID) { _, newID in adjustMethod(for: newID) }
         }

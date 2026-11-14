@@ -10,15 +10,22 @@ struct MovementsView: View {
     @State private var accountFilter: UUID?
     @State private var methodFilter: PaymentMethod?
     @State private var categoryFilter: UUID?
+    @State private var search = ""
     @State private var creating = false
     @State private var editing: Movement?
 
     private var visible: [Movement] {
-        movements.filter { m in
+        let categoryNames = Dictionary(categories.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+        let accountNames = Dictionary(accounts.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+        return movements.filter { m in
             m.status == .confirmado
                 && (accountFilter == nil || m.accountID == accountFilter || m.destinationAccountID == accountFilter)
                 && (methodFilter == nil || m.method == methodFilter)
                 && (categoryFilter == nil || m.categoryID == categoryFilter)
+                && MovementSearch.matches(query: search,
+                                          texts: [m.merchant, m.note, m.categoryID.flatMap { categoryNames[$0] },
+                                                  m.accountID.flatMap { accountNames[$0] }],
+                                          amount: m.amount)
         }
     }
 
@@ -38,11 +45,12 @@ struct MovementsView: View {
             }
             .overlay {
                 if visible.isEmpty {
-                    ContentUnavailableView("Sin movimientos", systemImage: "list.bullet",
-                                           description: Text("Toca + para registrar uno."))
+                    ContentUnavailableView(search.isEmpty ? "Sin movimientos" : "Sin resultados", systemImage: "list.bullet",
+                                           description: Text(search.isEmpty ? "Toca + para registrar uno." : "Ningún movimiento coincide con «\(search)»."))
                 }
             }
             .navigationTitle("Movimientos")
+            .searchable(text: $search, prompt: "Buscar por nombre o monto")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {

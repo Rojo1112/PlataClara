@@ -66,6 +66,7 @@ struct SettingsView: View {
                 Text("Guarda el respaldo en Archivos o iCloud Drive. Restaurar reemplaza todos los datos actuales.")
             }
             BackupEncryptionSection()
+            PocketRepairSection()
             Section {
                 Toggle("Pedir Face ID o código al abrir", isOn: Binding(get: { lockEnabled }, set: { setLock($0) }))
             } header: {
@@ -95,7 +96,7 @@ struct SettingsView: View {
             }
             Button("Cancelar", role: .cancel) { pendingRestore = nil }
         }
-        .alert("Respaldo", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+        .alert("Ajustes", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(message ?? "")

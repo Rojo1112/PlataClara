@@ -7,20 +7,26 @@ public struct AccountHint: Equatable, Sendable {
     public let last4: [String]
     public let walletCardName: String?
     public let emailSenders: [String]
+    /// Es la cuenta interna de las cajitas de otra cuenta: nunca recibe un pago ni un aviso del banco.
+    public let isPocket: Bool
 
-    public init(id: UUID, bank: Bank, kind: AccountKind, last4: [String], walletCardName: String?, emailSenders: [String]) {
+    public init(id: UUID, bank: Bank, kind: AccountKind, last4: [String], walletCardName: String?, emailSenders: [String],
+                isPocket: Bool = false) {
         self.id = id
         self.bank = bank
         self.kind = kind
         self.last4 = last4
         self.walletCardName = walletCardName
         self.emailSenders = emailSenders
+        self.isPocket = isPocket
     }
 }
 
 public enum AccountMatcher {
     /// Orden: últimos 4 dígitos → remitente del correo → banco. Si hay varias, desempata por tipo (crédito/ahorros).
+    /// Las cajitas no cuentan: si lo hicieran, «Nu» tendría dos cuentas de ahorros y ningún aviso encontraría la suya.
     public static func match(bank: Bank?, last4: String?, method: PaymentMethod, sender: String?, hints: [AccountHint]) -> UUID? {
+        let hints = hints.filter { !$0.isPocket }
         if let last4, let hint = hints.first(where: { $0.last4.contains(last4) }) { return hint.id }
 
         var candidates: [AccountHint] = []
@@ -38,6 +44,7 @@ public enum AccountMatcher {
     }
 
     public static func match(walletCardName: String, hints: [AccountHint]) -> AccountHint? {
+        let hints = hints.filter { !$0.isPocket }
         let name = TextNormalizer.fold(walletCardName).trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return nil }
         let named = hints.compactMap { h -> (AccountHint, String)? in

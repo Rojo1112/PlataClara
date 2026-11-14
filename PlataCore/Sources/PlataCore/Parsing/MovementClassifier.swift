@@ -51,6 +51,23 @@ public enum MovementClassifier {
         return from ? .fromPocket : .toPocket
     }
 
+    static let pocketNamePattern = try! NSRegularExpression(pattern: #"\b(?:cajitas?|bolsillos?)\s+(\S.*)$"#, options: [.caseInsensitive])
+
+    /// El nombre de la cajita: «Retiraste dinero de tu Cajita ahorro moto» → «ahorro moto». nil si el texto no lo trae.
+    public static func pocketName(_ text: String) -> String? {
+        let line = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let ns = line as NSString
+        guard let match = pocketNamePattern.firstMatch(in: line, range: NSRange(location: 0, length: ns.length)) else { return nil }
+        let name = ns.substring(with: match.range(at: 1)).trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? nil : name
+    }
+
+    /// Texto de un movimiento de cajita como lo muestra el banco. Con él se reconoce después el sentido y la cajita.
+    public static func pocketLabel(_ direction: PocketDirection, name: String?) -> String {
+        let base = direction == .fromPocket ? "Retiraste dinero de tu Cajita" : "Agregaste dinero a tu Cajita"
+        return name.map { "\(base) \($0)" } ?? base
+    }
+
     public static func classify(_ text: String) -> Classification {
         let t = TextNormalizer.fold(text)
         func has(_ words: [String]) -> Bool { words.contains { t.contains($0) } }

@@ -2,6 +2,7 @@ import Foundation
 import PDFKit
 import UIKit
 import Vision
+import PlataCore
 
 /// Saca el texto de un PDF. Primero se usa el texto incrustado; si no hay (PDF escaneado o con la copia
 /// de texto bloqueada) se dibuja cada página y se lee la imagen con OCR en el propio teléfono.
@@ -20,9 +21,11 @@ enum StatementTextExtractor {
     }
 
     /// Lee el texto de una captura de pantalla o foto.
-    static func ocrText(of image: UIImage) async -> String {
+    /// - Parameter dropIconColumn: para capturas de la lista de movimientos del banco: descarta lo que el
+    ///   reconocimiento «lee» en el ícono de cada fila, que si no queda metido en el nombre.
+    static func ocrText(of image: UIImage, dropIconColumn: Bool = false) async -> String {
         guard let cgImage = image.cgImage else { return "" }
-        return await recognize(cgImage)
+        return await recognize(cgImage, dropIconColumn: dropIconColumn)
     }
 
     private static func render(_ page: PDFPage) -> CGImage? {
@@ -41,7 +44,7 @@ enum StatementTextExtractor {
         return image.cgImage
     }
 
-    private static func recognize(_ image: CGImage) async -> String {
+    private static func recognize(_ image: CGImage, dropIconColumn: Bool = false) async -> String {
         await withCheckedContinuation { (continuation: CheckedContinuation<String, Never>) in
             DispatchQueue.global(qos: .userInitiated).async {
                 let request = VNRecognizeTextRequest()
@@ -50,28 +53,19 @@ enum StatementTextExtractor {
                 request.recognitionLanguages = ["es-ES", "en-US"]
                 let handler = VNImageRequestHandler(cgImage: image, options: [:])
                 try? handler.perform([request])
-                continuation.resume(returning: lines(from: request.results ?? []))
+                continuation.resume(returning: lines(from: request.results ?? [], dropIconColumn: dropIconColumn))
             }
         }
     }
 
     /// Une los trozos que están en la misma fila de la página en una sola línea, de izquierda a derecha.
-    private static func lines(from observations: [VNRecognizedTextObservation]) -> String {
-        let items: [(x: CGFloat, y: CGFloat, text: String)] = observations.compactMap { observation in
+    /// Vision mide desde abajo; `OCRLayout` desde arriba.
+    private static func lines(from observations: [VNRecognizedTextObservation], dropIconColumn: Bool) -> String {
+        let pieces: [OCRPiece] = observations.compactMap { observation in
             guard let text = observation.topCandidates(1).first?.string else { return nil }
-            return (observation.boundingBox.minX, observation.boundingBox.midY, text)
+            let box = observation.boundingBox
+            return OCRPiece(minX: box.minX, maxX: box.maxX, midY: 1 - box.midY, text: text)
         }
-        let sorted = items.sorted { $0.y > $1.y }
-        var rows: [[(x: CGFloat, y: CGFloat, text: String)]] = []
-        for item in sorted {
-            if let last = rows.last, abs(last[0].y - item.y) < 0.008 {
-                rows[rows.count - 1].append(item)
-            } else {
-                rows.append([item])
-            }
-        }
-        return rows
-            .map { row in row.sorted { $0.x < $1.x }.map { $0.text }.joined(separator: " ") }
-            .joined(separator: "\n")
+        return OCRLayout.lines(from: pieces, dropIconColumn: dropIconColumn)
     }
 }

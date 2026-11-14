@@ -112,6 +112,8 @@ public enum ScreenshotParser {
                 if !rest.isEmpty { desc.append(rest) }
                 continue
             }
+            // Una línea suelta sin ninguna letra («·3», «”») es lo que el reconocimiento leyó en un ícono o una raya.
+            guard withoutInstallments.contains(where: \.isLetter) else { continue }
             if value != nil { desc.append(withoutInstallments) } else { pre = withoutInstallments }
         }
         if carried { flushCut() } else if value != nil, day == nil {
@@ -169,7 +171,9 @@ public enum ScreenshotParser {
 
     private static func clean(_ text: String) -> String {
         let withoutInstallments = installments.stringByReplacing(in: text, with: "")
-        let collapsed = withoutInstallments.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        // Los trozos sin letras ni números («—», «”») son restos del reconocimiento, no parte del nombre.
+        let collapsed = withoutInstallments.split(whereSeparator: { $0.isWhitespace })
+            .filter { $0.contains { $0.isLetter || $0.isNumber } }.joined(separator: " ")
         return collapsed.trimmingCharacters(in: CharacterSet(charactersIn: " -|·"))
     }
 

@@ -26,10 +26,15 @@ public enum StatementReconciler {
                              calendar: Calendar) -> [Int: UUID] {
         struct Pair { let entry: Int; let movement: Int; let distance: TimeInterval }
         var pairs: [Pair] = []
+        // Se calcula una sola vez por movimiento: la búsqueda compara cada renglón con todos.
+        let pockets = existing.map { MovementClassifier.pocketDirection($0.merchant ?? "") }
         for (i, entry) in entries.enumerated() {
+            // Un extracto no marca sus renglones de cajita: se reconocen por el texto.
+            let direction = entry.pocket ?? MovementClassifier.pocketDirection(
+                entry.description, sign: entry.kind == .ingreso ? "+" : entry.kind == .gasto ? "-" : nil)
             for (j, m) in existing.enumerated() {
-                guard m.amount == entry.amount, m.kind == entry.kind else { continue }
-                guard accountID == nil || m.accountID == nil || m.accountID == accountID else { continue }
+                guard m.amount == entry.amount,
+                      isSameMovementKind(entry, m, direction: direction, pocket: pockets[j], accountID: accountID) else { continue }
                 let gap = abs(m.date.timeIntervalSince(entry.date))
                 if entry.hasTime && hasClockTime(m.date, calendar) {
                     guard gap <= timeWindow else { continue }
@@ -50,6 +55,31 @@ public enum StatementReconciler {
             result[pair.entry] = existing[pair.movement].id
         }
         return result
+    }
+
+    /// El movimiento ya registrado es del mismo tipo y de la misma cuenta que el renglón.
+    /// - Un renglón de cajita solo coincide con un movimiento de cajita en el mismo sentido, y uno que no es de cajita,
+    ///   con uno que tampoco lo es: «Pagaste tu tarjeta» y «Agregaste dinero a tu Cajita» por el mismo monto no se confunden.
+    /// - Sacar plata de una cajita queda guardado como traslado *desde* las cajitas *hacia* la cuenta: se compara el destino.
+    /// - Las versiones anteriores a la 0.7.2 guardaban los movimientos de cajita como ingreso o gasto: también coinciden,
+    ///   para que volver a importar no los duplique.
+    /// - Parameters:
+    ///   - direction: sentido del renglón si es de cajita.
+    ///   - pocket: sentido del movimiento ya registrado si es de cajita (por su texto).
+    static func isSameMovementKind(_ entry: StatementEntry, _ m: MovementSnapshot, direction: PocketDirection?,
+                                   pocket: PocketDirection?, accountID: UUID?) -> Bool {
+        func ownAccount() -> Bool { accountID == nil || m.accountID == nil || m.accountID == accountID }
+        guard let direction else {
+            return m.kind == entry.kind && (m.kind != .transferencia || pocket == nil) && ownAccount()
+        }
+        guard pocket == direction else { return false }
+        switch m.kind {
+        case .transferencia:
+            guard direction == .fromPocket else { return ownAccount() }
+            return accountID == nil || m.destinationAccountID == nil || m.destinationAccountID == accountID
+        case .ingreso: return direction == .fromPocket && ownAccount()
+        case .gasto: return direction == .toPocket && ownAccount()
+        }
     }
 
     /// Un movimiento tiene hora real si no está a las 00:00 en punto (así se guardan los que solo traen el día).

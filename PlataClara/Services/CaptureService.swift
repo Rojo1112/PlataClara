@@ -54,7 +54,9 @@ enum CaptureService {
         let recentMovements = (try? context.fetch(FetchDescriptor<Movement>(predicate: #Predicate { $0.date >= since }))) ?? []
         let recent = recentMovements.map { $0.snapshot(categoryName: nil) }
 
-        switch CapturePipeline.decide(parsed: parsed, accountID: accountID, date: date, existing: recent) {
+        // Un retiro de cajita queda guardado desde la cuenta de cajitas: para ver si ya está, no se compara la cuenta.
+        let dedupAccount = parsed?.pocket == .fromPocket ? nil : accountID
+        switch CapturePipeline.decide(parsed: parsed, accountID: dedupAccount, date: date, existing: recent) {
         case .duplicateOf(let id):
             // Se fusiona con el primero: si ese no tenía cuenta y este sí, hereda cuenta y texto.
             if let first = recentMovements.first(where: { $0.id == id }) {
@@ -81,6 +83,11 @@ enum CaptureService {
                                     accountID: accountID, source: source, status: status)
             movement.merchant = parsed.merchant
             movement.rawText = rawText
+            if let pocket = parsed.pocket, let accountID,
+               let pockets = context.all(Account.self).first(where: { $0.parentAccountID == accountID }) {
+                movement.accountID = pocket == .fromPocket ? pockets.id : accountID
+                movement.destinationAccountID = pocket == .fromPocket ? accountID : pockets.id
+            }
             context.insert(movement)
             try? context.save()
             if status == .confirmado {

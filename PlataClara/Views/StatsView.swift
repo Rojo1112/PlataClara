@@ -34,8 +34,9 @@ struct StatsView: View {
         let byMethod = Stats.expensesByMethod(movements: snapshots, in: month)
         let sources = Stats.incomeBySource(movements: snapshots, in: month)
         let thirdParty = Stats.thirdPartyNet(movements: snapshots, in: month)
-        let pockets = Stats.pocketFlows(movements: snapshots, in: month,
-                                        pocketAccounts: Set(accounts.filter { $0.parentAccountID != nil }.map(\.id)))
+        let pocketAccounts = Set(accounts.filter { $0.parentAccountID != nil }.map(\.id))
+        let pockets = Stats.pocketFlows(movements: snapshots, in: month, pocketAccounts: pocketAccounts)
+        let pocketsByName = Stats.pocketFlowsByName(movements: snapshots, in: month, pocketAccounts: pocketAccounts)
         let monthExpenses = movements
             .filter { $0.kind == .gasto && $0.status == .confirmado && month.contains($0.date) && $0.date < month.end }
             .sorted { $0.date > $1.date }
@@ -130,10 +131,16 @@ struct StatsView: View {
                         row("Sacaste de cajitas", pockets.withdrawn)
                         row(pockets.net < 0 ? "Usaste de lo ahorrado" : "Tus cajitas crecieron", abs(pockets.net),
                             color: pockets.net < 0 ? .orange : .green, bold: true)
+                        if pocketsByName.count > 1 {
+                            ForEach(pocketsByName, id: \.name) { pocket in
+                                row(pocket.name, abs(pocket.net), color: pocket.net < 0 ? .orange : .green,
+                                    detail: "+\(Money.format(pocket.saved)) · -\(Money.format(pocket.withdrawn))")
+                            }
+                        }
                     } header: {
                         Text("Ahorro en cajitas")
                     } footer: {
-                        Text("Mover plata entre tu cuenta y tus cajitas no es un ingreso ni un gasto: sigue siendo tuya, por eso no suma en lo que te entró ni en lo que te salió. Lo que gastes con plata sacada de una cajita sí cuenta como gasto.")
+                        Text("Mover plata entre tu cuenta y tus cajitas no es un ingreso ni un gasto: sigue siendo tuya, por eso no suma en lo que te entró ni en lo que te salió. Lo que gastes con plata sacada de una cajita sí cuenta como gasto. Por cada cajita se muestra lo que guardaste (+), lo que sacaste (-) y la diferencia: en naranja si sacaste más de lo que guardaste.")
                     }
                 }
 

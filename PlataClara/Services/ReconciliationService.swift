@@ -45,6 +45,28 @@ enum ReconciliationService {
         }
     }
 
+    /// Convierte en traslados los movimientos de cajita que una versión anterior guardó como ingreso o gasto.
+    /// No toca los enlazados a un gasto fijo ni los de cuentas sin cajitas. Devuelve cuántos cambió.
+    @discardableResult
+    static func repairLegacyPockets(context: ModelContext) -> Int {
+        let movements = context.all(Movement.self)
+        let accounts = context.all(Account.self)
+        var changed = 0
+        for candidate in PocketRepair.legacy(movements.map { $0.snapshot(categoryName: nil) }) {
+            guard let movement = movements.first(where: { $0.id == candidate.id }), movement.occurrenceID == nil,
+                  let account = accounts.first(where: { $0.id == movement.accountID }), allowsPockets(account) else { continue }
+            let pocketAccount = pockets(of: account, context: context)
+            movement.kind = .transferencia
+            movement.method = .transferencia
+            movement.categoryID = nil
+            movement.accountID = candidate.direction == .fromPocket ? pocketAccount.id : account.id
+            movement.destinationAccountID = candidate.direction == .fromPocket ? account.id : pocketAccount.id
+            changed += 1
+        }
+        if changed > 0 { try? context.save() }
+        return changed
+    }
+
     /// Una cuenta tiene cajitas o bolsillos si es de ahorros, no es efectivo y no es ella misma una cajita.
     static func allowsPockets(_ account: Account) -> Bool {
         account.kind == .ahorros && account.bank != .efectivo && account.parentAccountID == nil

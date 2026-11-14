@@ -531,7 +531,7 @@ struct StatementImportView: View {
             for (index, item) in items.enumerated() {
                 screenshotProgress = (index, items.count)
                 if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                    let text = await StatementTextExtractor.ocrText(of: image)
+                    let text = await StatementTextExtractor.ocrText(of: image, dropIconColumn: true)
                     if home == nil, HomeBalanceParser.isHomeScreen(text) { home = text }
                     texts.append(text)
                 }
