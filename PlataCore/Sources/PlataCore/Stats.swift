@@ -118,7 +118,7 @@ public enum Stats {
         return PocketFlows(saved: saved, withdrawn: withdrawn)
     }
 
-    /// Lo mismo, separado por cajita («Mi primera Cajita», «ahorro moto»), según el nombre que trae cada movimiento.
+    /// Lo mismo, separado por cajita («Mi primera Cajita», «viaje»), según el nombre que trae cada movimiento.
     /// Los traslados sin nombre de cajita quedan juntos en «Cajitas».
     public static func pocketFlowsByName(movements: [MovementSnapshot], in interval: DateInterval,
                                          pocketAccounts: Set<UUID>) -> [PocketTotal] {

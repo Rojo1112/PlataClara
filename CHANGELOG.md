@@ -13,7 +13,7 @@ La versión recomendada para volver atrás si algo falla es la [v0.5.1](https://
 **Errores corregidos**
 - **Volver a importar capturas duplicaba los retiros de cajita.** Ahora se reconocen como ya registrados, también si una versión anterior los guardó como ingreso o gasto.
 - **La cuenta de cajitas confundía el registro automático.** Los atajos sin nombre de cuenta y los avisos identificados por el banco dejaban de encontrar la cuenta y caían en «Por revisar»; el formulario de movimiento dejaba de traer la cuenta elegida. Las cajitas ya no cuentan como una cuenta más para eso.
-- **Nombres partidos por la lectura de la captura.** Lo que el reconocimiento de texto «leía» en el ícono de cada fila quedaba metido en el nombre («LIDY ·3 OSORIO»). Ahora se descarta, y «¿De dónde viene tu plata?» y «Mayores gastos» suman la misma persona o comercio aunque cambien mayúsculas, tildes o signos («UBER*RIDES» y «UBER RIDES»).
+- **Nombres partidos por la lectura de la captura.** Lo que el reconocimiento de texto «leía» en el ícono de cada fila quedaba metido en el nombre («ANA ·3 DEMO»). Ahora se descarta, y «¿De dónde viene tu plata?» y «Mayores gastos» suman la misma persona o comercio aunque cambien mayúsculas, tildes o signos («UBER*RIDES» y «UBER RIDES»).
 - Un aviso de cajita registrado con un atajo entraba como gasto: ahora queda por revisar como traslado.
 
 **Funciones nuevas**
@@ -49,7 +49,7 @@ La versión recomendada para volver atrás si algo falla es la [v0.5.1](https://
 - **Importar capturas:** si entre las capturas está la pantalla de inicio de la cuenta («Saldo disponible»), la app lee el saldo y el de las cajitas y ofrece guardarlos como punto de cuadre, con la hora del reloj de la captura (se puede ajustar).
 - **Movimientos con la fecha cortada:** si una captura corta la fecha de la última fila y la siguiente no la repite, la app ya no la descarta: la muestra aparte, sin marcar, con la fecha de la fila de arriba, y pregunta si la agregas (ajustando la fecha) o la descartas.
 
-**Comprobado**: 🧪 pruebas de `PlataCore` (120) y las 43 capturas de Nu leídas con OCR en Linux: detecta los 2 movimientos de fecha cortada (−$10.000 y +$30.000) y, con el saldo de la captura de inicio como punto de cuadre, Ahorro Nu da $63.335 y Cajitas $0 aunque el saldo inicial esté mal. La app compila en GitHub; falta probarla en iPhone.
+**Comprobado**: 🧪 pruebas de `PlataCore` (120) y las 43 capturas de Nu leídas con OCR en Linux: detecta los 2 movimientos con la fecha cortada y, con el saldo de la captura de inicio como punto de cuadre, los saldos parten del banco aunque el saldo inicial esté mal. La app compila en GitHub; falta probarla en iPhone.
 
 ## v0.7.2 — Cajitas como ahorro y capturas más confiables
 **Qué cambió**

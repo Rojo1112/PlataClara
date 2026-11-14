@@ -53,7 +53,7 @@ public enum MovementClassifier {
 
     static let pocketNamePattern = try! NSRegularExpression(pattern: #"\b(?:cajitas?|bolsillos?)\s+(\S.*)$"#, options: [.caseInsensitive])
 
-    /// El nombre de la cajita: «Retiraste dinero de tu Cajita ahorro moto» → «ahorro moto». nil si el texto no lo trae.
+    /// El nombre de la cajita: «Retiraste dinero de tu Cajita viaje» → «viaje». nil si el texto no lo trae.
     public static func pocketName(_ text: String) -> String? {
         let line = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
         let ns = line as NSString

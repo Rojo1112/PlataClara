@@ -26,9 +26,9 @@ final class OCRLayoutTests: XCTestCase {
 
     func testEncabezadoDeDiaYTextoAnchoQueEmpiezaEnElMargenSeConservan() {
         // La hora de la barra de estado cabe en la columna del ícono, pero está arriba: se conserva.
-        let pieces = [piece(0.05, 0.13, 0.20, "Hoy"), piece(0.06, 0.45, 0.14, "$63.335,97"),
+        let pieces = [piece(0.05, 0.13, 0.20, "Hoy"), piece(0.06, 0.45, 0.14, "$45.678,90"),
                       piece(0.09, 0.18, 0.02, "12:44"), piece(0.07, 0.10, 0.09, "<")]
-        XCTAssertEqual(OCRLayout.lines(from: pieces, dropIconColumn: true), "12:44\n$63.335,97\nHoy")
+        XCTAssertEqual(OCRLayout.lines(from: pieces, dropIconColumn: true), "12:44\n$45.678,90\nHoy")
     }
 }
 
@@ -90,14 +90,14 @@ final class GroupingStatsTests: XCTestCase {
         let ms = [
             transfer(300_000, from: nu, to: cajitas, "Agregaste dinero a tu Cajita Mi primera Cajita"),
             transfer(100_000, from: cajitas, to: nu, "Retiraste dinero de tu Cajita Mi primera Cajita"),
-            transfer(60_000, from: nu, to: cajitas, "Agregaste dinero a tu Cajita ahorro moto"),
-            transfer(30_000, from: cajitas, to: nu, "Retiraste dinero de tu Cajita ahorro moto"),
+            transfer(60_000, from: nu, to: cajitas, "Agregaste dinero a tu Cajita viaje"),
+            transfer(30_000, from: cajitas, to: nu, "Retiraste dinero de tu Cajita viaje"),
             transfer(5_000, from: cajitas, to: nu, "Traslado desde cajitas"),
             transfer(200_000, from: nu, to: tarjeta, "Pagaste tu tarjeta")
         ]
         let byName = Stats.pocketFlowsByName(movements: ms, in: octubre, pocketAccounts: [cajitas])
         XCTAssertEqual(byName, [PocketTotal(name: "Mi primera Cajita", saved: 300_000, withdrawn: 100_000),
-                                PocketTotal(name: "ahorro moto", saved: 60_000, withdrawn: 30_000),
+                                PocketTotal(name: "viaje", saved: 60_000, withdrawn: 30_000),
                                 PocketTotal(name: "Cajitas", saved: 0, withdrawn: 5_000)])
         XCTAssertEqual(byName.map(\.net), [200_000, 30_000, -5_000])
         // Suma lo mismo que el total de cajitas.
@@ -182,15 +182,15 @@ final class PocketCaptureTests: XCTestCase {
     }
 
     func testAvisoDeCajitaEsUnTrasladoPorRevisar() throws {
-        let out = try XCTUnwrap(GenericParser.parse(text: "Retiraste $30.000 de tu Cajita ahorro moto"))
+        let out = try XCTUnwrap(GenericParser.parse(text: "Retiraste $30.000 de tu Cajita viaje"))
         XCTAssertEqual(out.kind, .transferencia)
         XCTAssertEqual(out.pocket, .fromPocket)
         XCTAssertEqual(out.amount, 30_000)
-        XCTAssertEqual(out.merchant, "Retiraste dinero de tu Cajita ahorro moto")
+        XCTAssertEqual(out.merchant, "Retiraste dinero de tu Cajita viaje")
         XCTAssertFalse(out.isExplicit)
         // El texto guardado sirve después para reconocer el sentido y la cajita.
         XCTAssertEqual(MovementClassifier.pocketDirection(out.merchant ?? ""), .fromPocket)
-        XCTAssertEqual(MovementClassifier.pocketName(out.merchant ?? ""), "ahorro moto")
+        XCTAssertEqual(MovementClassifier.pocketName(out.merchant ?? ""), "viaje")
 
         let into = try XCTUnwrap(GenericParser.parse(text: "Agregaste $60.000 a tu Cajita Mi primera Cajita"))
         XCTAssertEqual(into.pocket, .toPocket)
